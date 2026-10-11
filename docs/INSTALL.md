@@ -176,7 +176,21 @@ XDG_CONFIG_HOME = <distro>/.local/config
 XDG_DATA_HOME   = <distro>/.local/data
 XDG_STATE_HOME  = <distro>/.local/state
 XDG_CACHE_HOME  = <distro>/.local/cache
+TMPDIR          = <distro>/.local/tmp
 ```
+
+**`TMPDIR` 也是必需的，而且它踩过一次坑。** 不显式设置它时，本 Windows nightly 的
+`vim.fn.tempname()` 会返回**空字符串**（`$TEMP` 明明有效）。后果不是「临时文件放错地方」，
+而是一串看起来毫不相干的错误：
+
+1. `fzf-lua` 把命令拼成 `<fzf> … > <tempname>`，重定向目标成了空 → cmd 报
+   **「系统找不到指定的路径。」**，这句话被显示在 fzf 窗口里
+2. 紧接着 `vim.fn.delete('')` 抛 **`E474: Invalid argument`**，栈回溯指向
+   `fzf-lua/fzf.lua:175` 的清理动作
+
+那个 `E474` 栈回溯极具误导性——它指向的是**收尾动作**，而不是病因。
+真因是一条空字符串。所以启动脚本除了设 `TMPDIR`，还会把上述五个目录**都建出来**：
+一个不存在的 temp/cache 目录，往往在很远的地方表现为一个看不懂的错误。
 
 代价是发行版目录会变大（会话、undo、缓存都在里面），换来的是：
 

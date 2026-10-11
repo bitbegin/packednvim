@@ -64,10 +64,25 @@ set "XDG_CONFIG_HOME=%DISTRO%\.local\config"
 set "XDG_DATA_HOME=%DISTRO%\.local\data"
 set "XDG_STATE_HOME=%DISTRO%\.local\state"
 set "XDG_CACHE_HOME=%DISTRO%\.local\cache"
+
+rem TMPDIR must be set explicitly. Without it, this Windows nightly's
+rem vim.fn.tempname() returns an EMPTY STRING (verified: TEMP is valid, yet
+rem tempname() == ""). That breaks fzf-lua: it builds "<fzf> ... > <tempname>",
+rem so the redirect target is empty and cmd.exe reports
+rem "The system cannot find the path specified", after which
+rem vim.fn.delete("") throws E474: Invalid argument.
+rem The E474 traceback points at fzf.lua's cleanup, which misleads you away
+rem from the real cause - an empty tempname.
+set "TMPDIR=%DISTRO%\.local\tmp"
+
 set "PATH=%DISTRO%\bin;%PATH%"
 
-if not exist "%XDG_CONFIG_HOME%" mkdir "%XDG_CONFIG_HOME%"
-if not exist "%XDG_STATE_HOME%" mkdir "%XDG_STATE_HOME%"
+rem Create every directory we point at. Missing ones are not harmless:
+rem a non-existent temp/cache dir is exactly what surfaces as weird errors
+rem much later, far from the cause.
+for %%D in (config data state cache tmp) do (
+  if not exist "%DISTRO%\.local\%%D" mkdir "%DISTRO%\.local\%%D"
+)
 
 "%NVIMBIN%" -u "%DISTRO%\init.lua" %*
 exit /b %ERRORLEVEL%

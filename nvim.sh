@@ -50,9 +50,19 @@ XDG_CONFIG_HOME="$here/.local/config"
 XDG_DATA_HOME="$here/.local/data"
 XDG_STATE_HOME="$here/.local/state"
 XDG_CACHE_HOME="$here/.local/cache"
-PATH="$here/bin:$PATH"
-export XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME PATH
 
-mkdir -p "$XDG_CONFIG_HOME" "$XDG_STATE_HOME"
+# 必须显式设置 TMPDIR。不设时，本 Windows nightly 的 vim.fn.tempname() 会返回
+# **空字符串**（实测：TEMP 有效，但 tempname() == ""）。这会打断 fzf-lua：
+# 它把命令拼成 "<fzf> ... > <tempname>"，重定向目标为空，于是 cmd 报
+# 「系统找不到指定的路径」，紧接着 vim.fn.delete("") 抛 E474: Invalid argument。
+# 那个 E474 栈回溯指向 fzf.lua 的清理动作，很容易把人带偏 —— 真因是空 tempname。
+TMPDIR="$here/.local/tmp"
+
+PATH="$here/bin:$PATH"
+export XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME TMPDIR PATH
+
+# 把指向的目录都建出来。缺目录不是小事：
+# 一个不存在的 temp/cache 目录，往往在很远的地方表现为一个看不懂的错误。
+mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$TMPDIR"
 
 exec "$NVIMBIN" -u "$here/init.lua" "$@"
