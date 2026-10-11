@@ -76,6 +76,8 @@ python tools/check-stack.py                                   # 校验方案里�
 | [`docs/DECIDED.md`](docs/DECIDED.md) | **已决策**：逐格答案与依据，以及还需你拍板的事项 |
 | [`catalog/README.md`](catalog/README.md) | 目录的图例、行格式规范、依赖分级说明 |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 离线发行版架构设计：目录布局、单包策略、零联网的保证与验证、tree-sitter 解析器方案、LSP 方案、Win/Linux 差异、打包流程 |
+| [`docs/USAGE.md`](docs/USAGE.md) | **怎么用**：按「要做的事」组织（搜索 / 中文 / LSP / 格式化 / 文件 / 会话），含缺失工具的影响 |
+| [`docs/KEYMAPS.md`](docs/KEYMAPS.md) | **快捷键速查**：由 `tools/gen-keymaps.py` 对比「干净 Neovim vs 本发行版」生成，不会与配置脱节 |
 | [`docs/SEARCH-WORKFLOW.md`](docs/SEARCH-WORKFLOW.md) | 需求 5 的完整方案：`grepprg` 配置、quickfix 鼠标跳转映射、大文件降级代码、rg 与 fzf-lua 两条路线的取舍 |
 | [`docs/RESEARCH-NOTES.md`](docs/RESEARCH-NOTES.md) | 调研原始事实与来源：版本代际、管理器对比、依赖矩阵、可移植二进制来源、离线翻车清单 |
 | [`bin/README.md`](bin/README.md) | 随包分发的工具：版本、SHA256、许可证、注意事项 |
