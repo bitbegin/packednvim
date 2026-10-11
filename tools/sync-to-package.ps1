@@ -115,7 +115,13 @@ foreach ($rel in $drift) {
     $src = Join-Path $root $rel
     $tgt = Join-Path $dst $rel
     if ((Get-Item $src).PSIsContainer) {
-        Copy-Item $src $tgt -Recurse -Force
+        # **必须拷贝目录内容（\*）而不是目录本身。**
+        # Copy-Item <源目录> <已存在的目标目录> -Recurse 的语义是
+        # 「把源目录整个塞进目标里」，于是生成 lua\lua\... 这样的嵌套，
+        # 而原来的文件一个都没被更新 —— 这个坑真实发生过：
+        # 同步脚本报告「已同步 lua」，但包里的 mini.lua 仍是旧版本，
+        # 于是「我修了、你跑的还是旧的」又出现了一轮。
+        Copy-Item (Join-Path $src '*') $tgt -Recurse -Force
     } elseif ($rel -eq 'nvim.cmd') {
         # 必须 CRLF，否则 cmd.exe 解析多行 if(...) 块会出问题
         $t = [System.IO.File]::ReadAllText($src) -replace "`r`n", "`n" -replace "`n", "`r`n"
