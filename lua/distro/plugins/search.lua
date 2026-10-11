@@ -51,10 +51,20 @@ return {
         --  D%3a%2flang%2f...%2flua%2fdistro%2fsearch.luac —— 那串看不懂的
         --  %3a%2f 就是它）。从包目录里搜索时，这些东西会淹没真正的项目文件。
         --
-        -- 用 file_ignore_patterns 而不是去覆盖 fd_opts / rg_opts：
-        -- 后者是**替换**语义，会连带丢掉默认值里的其它排除项（我在这上面栽过一次）。
-        -- 这个选项是**追加**语义，对 fd 与 rg 两条路都生效。
+        -- 两层保险，因为两者作用的位置不同：
+        --   file_ignore_patterns 是**追加**语义，作用于 fzf-lua 的 Lua 侧过滤
+        --     与 grep provider，对 fd / rg 两条路都生效，且不会丢掉默认值；
+        --   fd_opts 决定真正下发的 fd 命令，它能被我截取命令来验证 ——
+        --     但它是**替换**语义。
         file_ignore_patterns = { '^%.local/' },
+
+        -- 注意：fd_opts 是替换语义，所以这里的值必须与 fzf-lua 的默认保持一致，
+        -- 我只在结尾追加了 --exclude .local。
+        -- 默认值来源：fzf-lua/defaults.lua 的 M.defaults.files.fd_opts
+        --   [[--color=never --type f --type l --exclude .git --exclude .jj]]
+        -- 上游若增删默认排除项，这里会落后 —— 代价是「多排或少排一个目录」，
+        -- 比丢掉 .git 那种「列表混进版本库内部」的后果轻得多，故可接受。
+        fd_opts = '--color=never --type f --type l --exclude .git --exclude .jj --exclude .local',
 
         winopts = {
           height = 0.85,
