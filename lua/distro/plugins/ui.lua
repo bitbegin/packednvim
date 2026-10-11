@@ -79,12 +79,26 @@ return {
     names = 'dressing.nvim',
     pack = 'start',
     setup = function()
+      -- 覆盖 listchars 的原因（这是一个真会崩的地方）：
+      --   dressing 的默认 win_options 里写着 listchars = "precedes:…,extends:…"，
+      --   而 `…`（U+2026）是东亚「歧义宽度」字符 —— 在 ambiwidth=double 下它占 2 格，
+      --   而 listchars 要求这些字段必须是 1 格，于是直接抛
+      --     E1512: wrong character width for field "precedes"
+      --   触发路径：任何走 vim.ui.input 的操作，例如 <leader>sG（要输入正则）。
+      --
+      -- 这是「CJK 正确宽度」与「插件假定字符恒为 1 格」的冲突，责任在插件的假设。
+      -- 本发行版面向中文用户，ambiwidth=double 不能退让，所以按插件修正。
+      --
+      -- 写法上刻意只覆盖 listchars 这一个键：dressing.setup 是深度合并，
+      -- 其余 win_options 默认值会保留。（覆盖式配置丢掉默认值，我在这上面栽过。）
+      local win_options = { listchars = 'precedes:<,extends:>' }
+
       require('dressing').setup({
-        input = { border = 'rounded', winblend = 0 },
+        input = { border = 'rounded', winblend = 0, win_options = win_options },
         select = {
           -- 优先用 fzf-lua 做选择界面：与本发行版的默认 picker 视觉一致
           backend = { 'fzf_lua', 'builtin' },
-          builtin = { border = 'rounded' },
+          builtin = { border = 'rounded', win_options = win_options },
         },
       })
     end,

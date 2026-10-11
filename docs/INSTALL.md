@@ -396,6 +396,33 @@ Windows 用 `.zip`，其余平台用 `.tar.gz`。这不是偏好，是硬要求�
 
 ## 三、常见问题
 
+### `E1512: Wrong character width for field "..."` —— 这是 `ambiwidth=double` 的代价
+
+本发行版为中文把 `ambiwidth` 设为 `double`（东亚「歧义宽度」字符按 2 格算，
+否则中文与框线字符会错位）。代价是：**任何把歧义宽度字符写进宽度敏感选项的插件都会报 E1512**，
+因为 `listchars` / `fillchars` / `statuscolumn` 这些字段要求字符恰好 1 格。
+
+已经遇到并修掉的两处：
+
+| 位置 | 出问题的字符 | 处理 |
+| --- | --- | --- |
+| 本发行版 `options.lua` 自己的 `listchars` | `·`（U+00B7）、`␣`（U+2423） | 改用 ASCII |
+| `dressing.nvim` 的默认 `win_options.listchars` | `…`（U+2026） | 在配置里只覆盖该字段 |
+
+**再遇到时的排查套路**（这个类别的错误会持续出现，所以值得记住）：
+
+```bash
+# 在插件目录里搜「可能被写进宽度敏感选项的非 ASCII 字符」
+grep -rn 'fillchars\|listchars\|statuscolumn' pack/distro/start/ | grep -P '[^\x00-\x7F]'
+```
+
+找到后**只覆盖那一个键**即可（插件的 `setup` 通常是深度合并，其余默认值会保留）。
+不要去改用 `ambiwidth=single` —— 那会让中文与框线字符在 CJK 终端里全部错位，
+是把一个局部问题换成一个全局问题。
+
+如果你的终端把歧义宽度字符渲染成 **1 格**（少数配置），那把 `ambiwidth` 设回 `single`
+才是正确的，此时这个类别的错误也会一并消失。
+
 **图标显示成方块**
 没装 Nerd Font，或终端没用它。这是强依赖，不是可选项。
 
