@@ -15,12 +15,9 @@ local function fzf_bin()
   return 'fzf'
 end
 
-local function fd_bin()
-  local root = vim.g.distro_root or ''
-  local exe = root .. '/bin/' .. (vim.fn.has('win32') == 1 and 'fd.exe' or 'fd')
-  if vim.fn.executable(exe) == 1 then return exe end
-  return 'fd'
-end
+-- 注：这里曾有一个 fd_bin()，用来把 files.cmd 指到随包的 fd。
+-- 已删除 —— 那种做法会覆盖掉 fzf-lua 默认命令里带的 --exclude .git，
+-- 而且没必要：启动脚本已把 <发行版>/bin 前置进 PATH。
 
 return {
   {
@@ -33,9 +30,20 @@ return {
         -- 关键：明确指向随包的 fzf。不设的话 fzf-lua 会去找 PATH 上的 fzf，
         -- 找不到就报 'fzf' is not a valid executable —— 那正是离线发行版最该避免的。
         fzf_bin = fzf_bin(),
-        -- 同理，文件列举用随包的 fd（比 find/rg --files 更快，且默认遵守 .gitignore）
-        fd_opts = '--color=never --hidden --exclude=.git',
-        files = { cmd = fd_bin() .. ' --type f --type l' },
+
+        -- 刻意**不**设置 files.cmd 与 fd_opts，用 fzf-lua 自己的默认值。
+        --
+        -- 教训：我曾用 files.cmd 指定随包 fd 的完整路径，看似更「确定」，
+        -- 实则破坏了默认行为 —— files.lua:33 是
+        --   if opts.cmd and #opts.cmd > 0 then command = opts.cmd
+        -- 一旦设了 cmd，fd_opts 就完全失效，而默认的 fd_opts 里带着
+        --   --exclude .git --exclude .jj
+        -- 于是列表会把 .git 内部的文件也混进来（--hidden 打开后 fd 会进 .git）。
+        -- 另外 --hidden / --follow / --no-ignore 这些开关只作用于默认形式的命令。
+        --
+        -- 不设 cmd 也不会退回到「系统的 fd」：启动脚本已把 <发行版>/bin 前置进 PATH，
+        -- 所以裸命令名 fd / rg 解析到的就是随包那份。
+        -- fzf-lua 会在 fd / fdfind / rg / find 之间自动挑可用的，前两个都在包里。
         winopts = {
           height = 0.85,
           width = 0.85,
