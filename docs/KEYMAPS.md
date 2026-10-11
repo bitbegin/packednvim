@@ -48,6 +48,10 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 
 | 键位 | 模式 | 说明 |
 | --- | --- | --- |
+| `<leader>gD` | 普通 | 文件历史与差异视图 |
+| `<leader>gc` | 普通 | Git 状态面板（Magit 风格） |
+| `<leader>gg` | 普通 | Git 状态面板（Magit 风格） |
+| `<leader>gh` | 普通 | 文件历史与差异视图 |
 | `<leader>gq` | 普通 | 重排当前段落 |
 
 ### `<leader>m` —— 消息与命令行
@@ -88,7 +92,10 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 
 | 键位 | 模式 | 说明 |
 | --- | --- | --- |
+| `<leader>uU` | 普通 | 撤销树（可视化撤销历史） |
+| `<leader>uc` | 普通 | 固定显示当前函数/类头部 |
 | `<leader>ur` | 普通 | 重载当前文件 |
+| `<leader>ut` | 普通 | 查看启动耗时明细 |
 
 ### `<leader>w` —— 窗口
 
@@ -112,6 +119,12 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | --- | --- | --- |
 | `<leader>:` | 普通 | 命令行历史（可编辑） |
 | `<leader>Y` | 普通 | 复制整行到系统剪贴板 |
+| `<leader>e` | 普通 | 像编辑文本一样编辑目录 |
+| `<leader>xX` | 普通 | 诊断/引用/符号列表面板 |
+| `<leader>xq` | 普通 | TODO 进 quickfix |
+| `<leader>xs` | 普通 | 诊断/引用/符号列表面板 |
+| `<leader>xt` | 普通 | 列出 TODO/FIXME（fzf） |
+| `<leader>xx` | 普通 | 诊断/引用/符号列表面板 |
 
 ## 直接键位（不经前导键）
 
@@ -121,15 +134,25 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `'` | 插入 | Closeopen action for "''" pair |
 | `(` | 插入 | Open action for "()" pair |
 | `)` | 插入 | Close action for "()" pair |
-| `-` | 普通 | Open parent directory |
+| `-` | 普通 | 像编辑文本一样编辑目录 |
 | `;` | 普通/可视/操作符待决 | Repeat jump |
 | `<BS>` | 插入 | MiniPairs <BS> |
 | `<C-C>` | 插入 | 退出插入模式 |
 | `<C-D>` | 普通 | 下半页并居中 |
+| `<C-H>` | 选择/插入 | 跳到上一个占位符 |
+| `<C-H>` | 普通 | 移到左边窗口 |
+| `<C-J>` | 普通 | 移到下边窗口 |
+| `<C-K>` | 普通 | 移到上边窗口 |
+| `<C-L>` | 选择/插入 | 展开片段 / 跳到下一个占位符 |
+| `<C-L>` | 普通 | 移到右边窗口 |
 | `<C-S>` | 普通/可视/选择/插入 | 保存 |
 | `<C-U>` | 普通 | 上半页并居中 |
 | `<CR>` | 插入 | MiniPairs <CR> |
 | `<Esc>` | 普通 | 清除搜索高亮 |
+| `<M-h>` | 普通 | 向左扩 |
+| `<M-j>` | 普通 | 向下扩 |
+| `<M-k>` | 普通 | 向上扩 |
+| `<M-l>` | 普通 | 向右扩 |
 | `<M-n>` | 普通 | Move to next reference |
 | `<M-p>` | 普通 | Move to previous reference |
 | `H` | 普通 | 上一个缓冲区 |
@@ -139,6 +162,9 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `S` | 普通/可视/操作符待决 | 按语法节点跳转（flash） |
 | ``` | 插入 | Closeopen action for "``" pair |
 | `a` | 可视/操作符待决 | Around textobject |
+| `aa` | 可视/操作符待决 | 参数（含外） |
+| `ac` | 可视/操作符待决 | 类（含外） |
+| `af` | 可视/操作符待决 | 函数（含外） |
 | `ai` | 可视/操作符待决 | Object scope with border |
 | `al` | 可视/操作符待决 | Around last textobject |
 | `an` | 可视/操作符待决 | Around next textobject |
@@ -152,10 +178,11 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `g[` | 普通/可视/操作符待决 | Move to left "around" |
 | `g]` | 普通/可视/操作符待决 | Move to right "around" |
 | `ga` | 普通/可视 | Align |
-| `gc` | 普通 | Comment |
+| `gb` | 普通 | 按语法树决定注释符号 |
+| `gc` | 普通 | 按语法树决定注释符号 |
 | `gc` | 操作符待决 | Comment textobject |
 | `gc` | 可视 | Comment selection |
-| `gcc` | 普通 | Comment line |
+| `gcc` | 普通 | 按语法树决定注释符号 |
 | `gh` | 普通/可视 | Apply hunks |
 | `gh` | 操作符待决 | Hunk range textobject |
 | `gm` | 普通 | Multiply |
@@ -171,6 +198,9 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `gx` | 可视 | Exchange selection |
 | `gxx` | 普通 | Exchange line |
 | `i` | 可视/操作符待决 | Inside textobject |
+| `ia` | 可视/操作符待决 | 参数（仅内） |
+| `ic` | 可视/操作符待决 | 类（仅内） |
+| `if` | 可视/操作符待决 | 函数（仅内） |
 | `ii` | 可视/操作符待决 | Object scope |
 | `il` | 可视/操作符待决 | Inside last textobject |
 | `in` | 可视/操作符待决 | Inside next textobject |
@@ -216,11 +246,13 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `[L` / `]L` | Location first | Location last |
 | `[O` / `]O` | Oldfile first | Oldfile last |
 | `[Q` / `]Q` | Quickfix first | Quickfix last |
-| `[T` / `]T` | Treesitter first | Treesitter last |
+| `[T` / `]T` | 上一个 TODO | 下一个 TODO |
 | `[U` / `]U` | Undo first | Undo last |
 | `[W` / `]W` | Window first | Window last |
 | `[X` / `]X` | Conflict first | Conflict last |
 | `[Y` / `]Y` | Yank first | Yank last |
+| `[[` / `][` | 上一个函数 | — |
+| `[]` / `]]` | — | 下一个函数 |
 | `[b` / `]b` | Buffer backward | Buffer forward |
 | `[c` / `]c` | Comment backward | Comment forward |
 | `[d` / `]d` | Diagnostic backward | Diagnostic forward |
@@ -231,6 +263,7 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `[l` / `]l` | Location backward | Location forward |
 | `[o` / `]o` | Oldfile backward | Oldfile forward |
 | `[q` / `]q` | Quickfix backward | Quickfix forward |
+| `[r` / `]r` | 上一个同名引用 | 下一个同名引用 |
 | `[t` / `]t` | Treesitter backward | Treesitter forward |
 | `[u` / `]u` | Undo backward | Undo forward |
 | `[w` / `]w` | Window backward | Window forward |

@@ -107,6 +107,23 @@ function M.check()
     h.info('已按需加载（packadd）：' .. table.concat(loaded, ', '))
   end
 
+  -- 配置分组本身的状态：缺失的分组意味着「插件装了但没配置」，
+  -- 是那种「能用但少东西」的静默失败，必须报出来。
+  local reg = require('distro.plugins')
+  if reg.missing and #reg.missing > 0 then
+    h.warn('以下配置分组没有载入（对应插件不会生效）：' .. table.concat(reg.missing, ', '))
+  end
+  if reg.failed and next(reg.failed) then
+    h.error('以下插件的配置执行时报错：')
+    for name, err in pairs(reg.failed) do h.error(('  %s：%s'):format(name, err)) end
+  end
+  -- 声明与实际目录不符：注册表会以实际目录为准自动兜底，所以不影响使用；
+  -- 但它是「同一件事被两处决定」的痕迹，值得显示出来以便哪天去对齐。
+  if reg.reconciled and #reg.reconciled > 0 then
+    h.info('声明与实际目录不符（已自动兜底，无需处理，仅供追溯）：')
+    for _, s in ipairs(reg.reconciled) do h.info('  ' .. s) end
+  end
+
   -- -------------------------------------------------------------------------
   h.start('distro: 随包工具')
 
