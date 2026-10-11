@@ -153,6 +153,55 @@ vim.fn.writefile(listing, out .. '/listing.txt')
 log(('收走 %d 个文件，原始合计 %.1f MB'):format(copied, total / 1024 / 1024))
 
 -- ---------------------------------------------------------------------------
+-- 4. Windows：把解析器从 .so 改名为 .dll
+--
+-- 必须做，而且原因很具体：nvim-treesitter 的安装逻辑把目标文件名**硬编码成 .so**
+-- （install.lua 里 `fs.joinpath(install_dir, lang) .. '.so'`），但在 Windows 上
+-- tree-sitter CLI 产出的是 DLL（实测前两字节是 'MZ'）。而 Neovim 的解析器加载器
+-- 在 Windows 上只找 `parser/<lang>.dll` —— 所以不改名，这 20 个解析器等于不存在。
+-- ---------------------------------------------------------------------------
+if jit.os:lower() == 'windows' then
+  local renamed = 0
+  for _, f in ipairs(vim.fn.glob(parser_dir .. '/*.so', false, true)) do
+    if vim.uv.fs_rename(f, f:sub(1, -4) .. '.dll') then renamed = renamed + 1 end
+  end
+  log(('Windows：把 %d 个解析器由 .so 改名为 .dll'):format(renamed))
+end
+
+-- ---------------------------------------------------------------------------
+-- 5. 把「在 pack/ 内产出」的平台相关文件暂存进 overlay/
+--
+-- 这一步是上一轮 CI 的漏网之鱼：harvest 作业上传的 artifact 只有 build/prebuilt，
+-- 而 blink 的原生库与 jieba 的 cdylib 都落在 pack/ 的插件目录里 ——
+-- 于是打包作业拿到的 pack/ 是原始的，包里根本没有这两个二进制，
+-- 启动后 blink 没有原生库、jieba 直接 require 失败。
+--
+-- 两个平台的文件扩展名不同（.so / .dll），所以 overlay 可以合并进同一个包。
+-- ---------------------------------------------------------------------------
+local overlay = out .. '/overlay'
+local staged = {}
+
+local function stage(rel)
+  local src = distro .. '/' .. rel
+  if vim.uv.fs_stat(src) == nil then
+    log('  暂存跳过（文件不存在）：' .. rel)
+    return
+  end
+  local dst = overlay .. '/' .. rel
+  vim.fn.mkdir(vim.fs.dirname(dst), 'p')
+  vim.fn.writefile(vim.fn.readfile(src, 'b'), dst, 'b')
+  staged[#staged + 1] = rel
+  log(('  已暂存 %s（%d 字节）'):format(rel, vim.fn.getfsize(src)))
+end
+
+stage(('pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy%s'):format(blink_ext))
+stage(('pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs%s'):format(jieba_ext))
+
+if #staged < 2 then
+  log('警告：overlay 只暂存到 ' .. #staged .. ' 个文件，预期 2 个')
+end
+
+-- ---------------------------------------------------------------------------
 -- 4. 断言：关键产物缺失就明确失败，别让 CI 报成功却产出空包
 -- ---------------------------------------------------------------------------
 local function has(pattern)

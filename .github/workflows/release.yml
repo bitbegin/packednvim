@@ -311,20 +311,46 @@ jobs:
                   shutil.copy2(src, dst)
               print(f'  已放入：{name}')
 
-          # 两平台的预编译产物各归各位。具体子路径等首次 CI 的 listing.txt
-          # 出来后再在配置里钉死，现在先原样保留整棵树以免猜错。
+          # 两平台的预编译产物各归各位。具体子路径由 init.lua 拼接，这里原样保留整棵树。
           for p in ('linux64', 'win64'):
               src = root / 'build' / 'prebuilt' / f'prebuilt-{p}' / 'neovim-data'
               dst = out / 'vendor' / 'prebuilt' / p / 'neovim-data'
               shutil.copytree(src, dst)
               print(f'  已放入预编译产物：{p}')
 
-          # 让包自己说清它是什么、怎么来的
-          lock = json.loads((root / 'vendor' / 'lock.json').read_text(encoding='utf-8'))
+          # 合并各平台的 overlay。
+          #
+          # 这一步是上一版漏掉的：blink 的原生库与 jieba 的 cdylib 都产出在 pack/ 的
+          # 插件目录里，而 harvest 作业只上传了 build/prebuilt —— 于是打包拿到的
+          # pack/ 是原始的，包里根本没有这两个二进制（首次实机验收时 blink 没有原生库、
+          # jieba 直接 require 失败，就是这么来的）。
+          #
+          # 两个平台的文件名扩展名不同（.so / .dll），所以可以共存于同一个包，
+          # 运行时由 init.lua 按平台选择。
+          for p in ('linux64', 'win64'):
+              ov = root / 'build' / 'prebuilt' / f'prebuilt-{p}' / 'overlay'
+              if not ov.is_dir():
+                  raise SystemExit(f'{p} 没有 overlay 目录 —— 平台产物丢失了')
+              merged = 0
+              for src in ov.rglob('*'):
+                  if src.is_file():
+                      dst = out / src.relative_to(ov)
+                      dst.parent.mkdir(parents=True, exist_ok=True)
+                      shutil.copy2(src, dst)
+                      merged += 1
+              if merged == 0:
+                  raise SystemExit(f'{p} 的 overlay 是空的')
+              print(f'  已合并 {p} 的平台产物：{merged} 个文件')
+
+          # 让包自己说清它是什么、怎么来的。
+          # 插件数量按**磁盘上实际装进去的目录**数，而不是按 lock 的条数 ——
+          # lock 会保留已从方案移除的历史记录，拿它计数会虚高。
+          pack_root = out / 'pack' / 'distro'
+          n_plugins = sum(1 for d in pack_root.glob('*/*') if d.is_dir()) if pack_root.is_dir() else 0
           (out / 'VERSION').write_text(
               '\n'.join([
                   f'neovim-baseline: {os.environ.get("NVIM_TAG", "?")}',
-                  f'plugins: {len(lock["plugins"])}',
+                  f'plugins: {n_plugins}',
                   f'commit: {os.environ.get("GITHUB_SHA", "?")}',
                   f'built-by: GitHub Actions run {os.environ.get("GITHUB_RUN_ID", "?")}',
                   '',
@@ -353,8 +379,14 @@ jobs:
           retention-days: 30
 
       - name: 发 Release
-        # push 事件短路，避免在 workflow_dispatch 之外做 null 比较
-        if: github.event_name == 'push' || github.event.inputs.tag != ''
+        # 只在「推了 v* tag」或「手动指定了 tag」时发布。
+        #
+        # 推 main **不**发布 Release：版本化的 Release 应当对应一个明确的版本 tag，
+        # 而不是每次 push 都去覆盖同一个 main。这也顺带避开了一个硬限制 ——
+        # GitHub 的 immutable release（仓库开启后）不允许替换或删除已有资源，
+        # `gh release upload --clobber` 会直接 422：Cannot delete asset from an
+        # immutable release。之前推 main 就建 Release，于是每次重新构建都撞这个。
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -373,9 +405,16 @@ jobs:
             echo '```'
           } >> dist/RELEASE-NOTES.md
 
+          # 不做 --clobber：若该 tag 已有 Release，说明这个版本号已经被占用。
+          # 覆盖一个已发布的版本会让「下载到的包」与「版本号」不再一一对应，
+          # 而且遇到 immutable release 时必然失败。宁可明确报错并给出解决办法。
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/packednvim.zip dist/packednvim.zip.sha256 --clobber
-          else
-            gh release create "$TAG" dist/packednvim.zip dist/packednvim.zip.sha256 \
-              --title "$TAG" --notes-file dist/RELEASE-NOTES.md
+            echo "::error::Release $TAG 已存在，不覆盖。"
+            echo "  发布新版本请用新的 tag（例如 v0.2.0）。"
+            echo "  确实要重发同一个 tag：先 gh release delete $TAG --yes --cleanup-tag"
+            echo "  注意若仓库启用了 immutable releases，已发布的资源无法删除。"
+            exit 1
           fi
+
+          gh release create "$TAG" dist/packednvim.zip dist/packednvim.zip.sha256 \
+            --title "$TAG" --notes-file dist/RELEASE-NOTES.md

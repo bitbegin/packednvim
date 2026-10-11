@@ -95,8 +95,11 @@ function M.check()
   else
     h.ok(('已 vendor 插件：start %d 个 / opt %d 个'):format(n_start, n_opt))
   end
+  -- lock 会保留「历史上选过、现已从方案移除」的插件记录（保留是为了可复现），
+  -- 所以它比磁盘上的目录多几个是正常的 —— 不能当成「有缺失」来报警。
   if expected and expected > n_start + n_opt then
-    h.warn(('vendor/lock.json 记录了 %d 个仓库，磁盘上只有 %d 个 —— 可能有缺失')
+    h.info(('vendor/lock.json 有 %d 条记录，磁盘上 %d 个目录；多出的部分是'
+      .. '历史上选过、现已从方案移除的插件（记录有意保留）')
       :format(expected, n_start + n_opt))
   end
   local loaded = pack.loaded()
