@@ -380,42 +380,54 @@ jobs:
           retention-days: 30
 
       - name: 发 Release
-        # 只在「推了 v* tag」或「手动指定了 tag」时发布。
+        # 推 main 也发布，但 tag 用 `main+<短commit>`（见下），每次构建天然唯一。
         #
-        # 推 main **不**发布 Release：版本化的 Release 应当对应一个明确的版本 tag，
-        # 而不是每次 push 都去覆盖同一个 main。这也顺带避开了一个硬限制 ——
-        # GitHub 的 immutable release（仓库开启后）不允许替换或删除已有资源，
-        # `gh release upload --clobber` 会直接 422：Cannot delete asset from an
-        # immutable release。之前推 main 就建 Release，于是每次重新构建都撞这个。
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
+        # 为什么不用固定的 `main`：GitHub 的 immutable release 不允许替换或删除已有资源，
+        # 而覆盖同一个 tag 就必须先删旧资源 —— 也就是之前那个
+        #   HTTP 422 ... Cannot delete asset from an immutable release
+        # 的由来。改成每次一个唯一 tag 之后，根本不存在「覆盖」这个动作。
+        if: github.event_name == 'push' || github.event.inputs.tag != ''
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+
+          EXTRA=""
           TAG="${{ github.event.inputs.tag }}"
-          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          if [ -n "$TAG" ]; then
+            : # 手动指定：原样使用，通常是 v0.1.0 这类正式版本号
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"        # 推了 v* tag
+          else
+            # 推 main：main+<7 位短 hash>。用 + 而不是空格或斜杠，是因为
+            # git refname 允许 +，而它在 URL 路径里也是合法字符，下载地址不会被破坏。
+            TAG="main+$(git rev-parse --short=7 HEAD)"
+            # 主分支构建是快照而不是版本发布：标成 prerelease，
+            # 这样 Releases 页的 "Latest" 徽章会留给真正的 v* 版本。
+            EXTRA="--prerelease"
+          fi
 
           cp dist/packednvim/VERSION dist/RELEASE-NOTES.md
           {
             echo
             echo "包内含 Windows 与 Linux 两套二进制与预编译产物，解压即用。"
+            echo "用法见包内 docs/USAGE.md；Windows 运行 nvim.cmd，Linux 运行 nvim.sh。"
             echo
             echo '```'
             cat dist/packednvim.zip.sha256
             echo '```'
           } >> dist/RELEASE-NOTES.md
 
-          # 不做 --clobber：若该 tag 已有 Release，说明这个版本号已经被占用。
-          # 覆盖一个已发布的版本会让「下载到的包」与「版本号」不再一一对应，
-          # 而且遇到 immutable release 时必然失败。宁可明确报错并给出解决办法。
+          # 唯一 tag 下不会撞车，但保留这道保险：宁可明确报错，也不静默覆盖一个已发布版本。
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::Release $TAG 已存在，不覆盖。"
-            echo "  发布新版本请用新的 tag（例如 v0.2.0）。"
-            echo "  确实要重发同一个 tag：先 gh release delete $TAG --yes --cleanup-tag"
             echo "  注意若仓库启用了 immutable releases，已发布的资源无法删除。"
+            echo "  确实要重发：gh release delete $TAG --yes --cleanup-tag"
             exit 1
           fi
 
+          # --target 明确指向本次构建的 commit，避免 tag 被指到别处。
           gh release create "$TAG" dist/packednvim.zip dist/packednvim.zip.sha256 \
-            --title "$TAG" --notes-file dist/RELEASE-NOTES.md
+            --title "$TAG" --notes-file dist/RELEASE-NOTES.md \
+            --target "$GITHUB_SHA" $EXTRA
