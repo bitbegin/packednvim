@@ -90,12 +90,9 @@ jobs:
             tools: windows-x64
             triple: x86_64-pc-windows-msvc
             ts_cli: tree-sitter-cli-windows-x64.zip
-          - id: darwin-x64
-            # Intel macOS runner 正在被逐步淘汰；不可用时改用 macos-15-intel，或删掉此项
-            runner: macos-13
-            tools: darwin-x64
-            triple: x86_64-apple-darwin
-            ts_cli: tree-sitter-cli-macos-x64.zip
+          # 注：不出 macOS Intel（darwin-x64）的包 —— 对应托管 runner 不可用。
+          # tools/fetch-runtime.ps1 与 fetch-tools.ps1 仍然支持该平台，
+          # 在 Intel Mac 或自建 runner 上可以照常打出这个包。
           - id: darwin-arm64
             runner: macos-14
             tools: darwin-arm64
@@ -263,7 +260,7 @@ jobs:
           ls -lh dist/
           echo "---"
           # 每个平台都必须有归档与校验和，缺一个就说明那个平台没打出来
-          for p in linux64 linux-arm64 win64 darwin-x64 darwin-arm64; do
+          for p in linux64 linux-arm64 win64 darwin-arm64; do
             if ls dist/packednvim-$p.* >/dev/null 2>&1; then
               echo "✓ $p"
             else

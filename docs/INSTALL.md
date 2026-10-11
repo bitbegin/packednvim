@@ -21,10 +21,17 @@
 | Windows x86_64 | `packednvim-win64.zip` |
 | Linux x86_64 | `packednvim-linux64.tar.gz` |
 | Linux arm64 | `packednvim-linux-arm64.tar.gz` |
-| macOS Intel | `packednvim-darwin-x64.tar.gz` |
 | macOS Apple Silicon | `packednvim-darwin-arm64.tar.gz` |
 
-Windows arm64 暂不出包（见 `DECIDED.md`）。
+**不出包的平台**，以及原因：
+
+| 平台 | 为什么 |
+| --- | --- |
+| Windows arm64 | 上游有 3 个工具（stylua / shfmt / shellcheck）根本没有 Windows arm64 产物，包会先天残缺 |
+| macOS Intel | 对应的托管 runner 不可用 |
+
+这两个平台的打包脚本**是支持的**（`fetch-runtime.ps1` 与 `fetch-tools.ps1` 都列了它们），
+在自建 runner 或本机上可以照常打出包来 —— 缺的只是 CI 里那台机器。
 
 ### 1. 前置条件
 
