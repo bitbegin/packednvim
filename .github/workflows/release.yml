@@ -162,6 +162,13 @@ jobs:
           $tag = ((Get-Content vendor/lock.json -Raw | ConvertFrom-Json).plugins |
                   Where-Object { $_.repo -eq 'saghen/blink.cmp' }).branch
           if (-not $tag) { throw 'vendor/lock.json 里没有 blink.cmp 的分支/tag' }
+          # 必须是版本 tag。若这里是 "HEAD"，说明 lock 是旧版 vendor 脚本写的
+          # （detached HEAD 时会把 branch 记成 HEAD），拼出的下载地址必然 404。
+          # 上一轮 CI 就是因此秒失败的，所以这里明确拦下并说清怎么修。
+          if ($tag -notmatch '^v?\d') {
+            throw "blink.cmp 在 lock 里的 branch 是 '$tag'，不是版本 tag。" +
+                  "修：pwsh tools/vendor.ps1 -Only blink.cmp 后重新提交 vendor/lock.json"
+          }
 
           if ($env:RUNNER_OS -eq 'Windows') {
             $triple = 'x86_64-pc-windows-msvc'; $ext = '.dll'

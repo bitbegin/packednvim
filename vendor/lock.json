@@ -462,7 +462,7 @@
       "repo": "saghen/blink.cmp",
       "dir": "pack/distro/start/blink.cmp",
       "pack": "start",
-      "branch": "HEAD",
+      "branch": "v1.10.2",
       "commit": "78336bc89ee5365633bcf754d93df01678b5c08f",
       "bytes": 1291743,
       "license_files": [
