@@ -400,9 +400,18 @@ jobs:
           elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAG="${GITHUB_REF_NAME}"        # 推了 v* tag
           else
-            # 推 main：main+<7 位短 hash>。用 + 而不是空格或斜杠，是因为
-            # git refname 允许 +，而它在 URL 路径里也是合法字符，下载地址不会被破坏。
-            TAG="main+$(git rev-parse --short=7 HEAD)"
+            # 推 main：main+<时间戳>+<7 位短 hash>
+            #
+            # 为什么要时间戳：只带 hash 的话，**同一个 commit 重新构建**（重跑失败的
+            # 作业、或对同一 ref 多次触发）会撞上已有的同名 Release，触发下面那道
+            # 「不覆盖」的保险而失败。加了时间戳，每次构建都唯一。
+            #
+            # 格式用 %Y%m%dT%H%M%SZ（UTC）：字典序即时间序，方便排序查找；
+            # 末尾的 Z 明确表示 UTC，避免不同时区的构建产生歧义。
+            # **注意不能用冒号** —— git refname 明确禁止 ':'，
+            # 所以是 20261011T142930Z 这种写法，而不是 2026-10-11 14:29:30。
+            STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+            TAG="main+${STAMP}+$(git rev-parse --short=7 HEAD)"
             # 主分支构建是快照而不是版本发布：标成 prerelease，
             # 这样 Releases 页的 "Latest" 徽章会留给真正的 v* 版本。
             EXTRA="--prerelease"
