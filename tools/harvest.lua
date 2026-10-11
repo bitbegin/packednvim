@@ -60,51 +60,19 @@ else
 end
 
 -- ---------------------------------------------------------------------------
--- 2. blink.cmp 的原生库
---    v1 的逻辑要从 git tag 推断版本，而 vendored 副本没有 .git，
---    所以用 force_version 明确指定（值取自 vendor/lock.json 记录的 tag，避免两处脱节）。
---    产物落在 <插件>/target/release/，随 pack/ 一起进包，本脚本不必收走。
+-- 2. 验证 blink.cmp 的原生库
+--    库由 workflow 从官方 release 预置到 <插件>/target/release/（带 sha256 校验），
+--    并刻意不写 version 文件 —— blink 见「无 version + 库可加载」就直接采用，
+--    因此不依赖 git tag、也不联网。这里做的是**加载验证**：它能被 require 成功，
+--    同时证明这个库与当前源码的 ABI 是兼容的（比只查文件存在强得多）。
 -- ---------------------------------------------------------------------------
-local blink_tag = nil
-local lock_path = distro .. '/vendor/lock.json'
-if vim.fn.filereadable(lock_path) == 1 then
-  local ok, lock = pcall(vim.json.decode, table.concat(vim.fn.readfile(lock_path), '\n'))
-  if ok and lock and lock.plugins then
-    for _, p in ipairs(lock.plugins) do
-      if p.repo == 'saghen/blink.cmp' then blink_tag = p.branch end
-    end
-  end
-end
-log('blink.cmp 目标版本 = ' .. tostring(blink_tag))
-
-local ok_blink, blink = pcall(require, 'blink.cmp')
-if ok_blink then
-  pcall(function()
-    blink.setup({
-      fuzzy = {
-        prebuilt_binaries = {
-          force_version = blink_tag,
-          download = true,
-          ignore_version_mismatch = true,
-        },
-      },
-    })
-  end)
-  -- 主动触发一次下载，并等它落盘
-  local lib_path
-  pcall(function()
-    local files = require('blink.cmp.fuzzy.download.files')
-    lib_path = files.lib_path
-    require('blink.cmp.fuzzy.download').ensure_downloaded(function() end)
-  end)
-  if lib_path then
-    vim.wait(60000, function() return vim.uv.fs_stat(lib_path) ~= nil end, 200)
-    log(('blink 原生库 %s -> %s'):format(lib_path, vim.uv.fs_stat(lib_path) and '已就位' or '缺失'))
-  else
-    log('拿不到 blink 原生库的预期路径')
-  end
+local blink_ext = jit.os:lower() == 'windows' and '.dll' or '.so'
+local blink_lib = distro .. '/pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy' .. blink_ext
+if vim.uv.fs_stat(blink_lib) then
+  local ok, err = pcall(require, 'blink.cmp.fuzzy.rust')
+  log('blink 原生库加载：' .. (ok and 'ok' or ('失败 -> ' .. tostring(err):gsub('\n.*', ''))))
 else
-  log('require("blink.cmp") 失败：' .. tostring(blink))
+  log('blink 原生库缺失：' .. blink_lib)
 end
 
 -- ---------------------------------------------------------------------------
@@ -159,11 +127,13 @@ end
 local problems = {}
 if not has('parser/') then problems[#problems + 1] = '没有 tree-sitter 解析器（parser/ 为空）' end
 
--- blink 的库在 pack/ 内，不在 data 里，所以单独查
-if blink_tag then
-  local ext = jit.os:lower() == 'windows' and '.dll' or '.so'
-  local p = distro .. '/pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy' .. ext
-  if vim.uv.fs_stat(p) == nil then problems[#problems + 1] = 'blink.cmp 原生库缺失：' .. p end
+-- blink 的库在 pack/ 内（不在 data 里），所以单独查；顺带做一次加载验证。
+-- 注意：这里必须直接用 blink_lib 判断，不能依赖某个可能为 nil 的变量 ——
+-- 否则条件恒假、断言被静默跳过，正是这类脚本最该避免的失败方式。
+if vim.uv.fs_stat(blink_lib) == nil then
+  problems[#problems + 1] = 'blink.cmp 原生库缺失：' .. blink_lib
+elseif not pcall(require, 'blink.cmp.fuzzy.rust') then
+  problems[#problems + 1] = 'blink.cmp 原生库存在但加载失败（ABI 与源码不匹配？）：' .. blink_lib
 end
 
 -- jieba 的库由 workflow 里的 build 脚本产出，同样在 pack/ 内

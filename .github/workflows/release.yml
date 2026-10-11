@@ -149,11 +149,54 @@ jobs:
           chmod +x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck
           ls -l bin/rg bin/fzf | awk '{print $1, $NF}'
 
-      # jieba.vim 的 Rust 后端：它自己的 build 脚本优先下载官方 cdylib，
-      # 拿不到（我们没有 .git、没有 tag）就退回 cargo 从源码编译。
-      # runner 自带 rustup/cargo，所以这条路可行。产物落在插件目录内，随 pack/ 进包。
+      # blink.cmp 的原生库：从官方 release 取该平台产物，按它期望的路径与文件名放好，
+      # 并用官方发布的 .sha256 校验。
+      #
+      # **刻意不写 version 文件**：blink 的逻辑是「没有 version 文件、但共享库能加载」
+      # 就直接采用（fuzzy/download/init.lua 第 27 行）。于是完全不需要 git tag，
+      # 运行时也不会联网下载 —— 正是我们要的离线形态。
+      - name: 预置 blink.cmp 原生库
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = ((Get-Content vendor/lock.json -Raw | ConvertFrom-Json).plugins |
+                  Where-Object { $_.repo -eq 'saghen/blink.cmp' }).branch
+          if (-not $tag) { throw 'vendor/lock.json 里没有 blink.cmp 的分支/tag' }
+
+          if ($env:RUNNER_OS -eq 'Windows') {
+            $triple = 'x86_64-pc-windows-msvc'; $ext = '.dll'
+          } else {
+            # runner 是 glibc。musl 发行版（如 Alpine）需要改成 x86_64-unknown-linux-musl
+            $triple = 'x86_64-unknown-linux-gnu'; $ext = '.so'
+          }
+          $base = "https://github.com/saghen/blink.cmp/releases/download/$tag/"
+          $dir  = 'pack/distro/start/blink.cmp/target/release'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+
+          $libTmp = Join-Path $env:RUNNER_TEMP 'blinklib'
+          $sumTmp = Join-Path $env:RUNNER_TEMP 'blinklib.sha256'
+          Invoke-WebRequest -Uri "$base$triple$ext"        -OutFile $libTmp
+          Invoke-WebRequest -Uri "$base$triple$ext.sha256" -OutFile $sumTmp
+
+          $want = ((Get-Content $sumTmp -Raw) -split '\s+')[0].ToLower()
+          $got  = (Get-FileHash $libTmp -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "blink 原生库 sha256 不符：期望 $want，实际 $got" }
+
+          $dest = Join-Path $dir "libblink_cmp_fuzzy$ext"
+          Copy-Item $libTmp $dest -Force
+          Write-Host ("已就位 {0}  {1:N0} 字节  sha256 {2}" -f $dest, (Get-Item $dest).Length, $want)
+
+      # jieba.vim 的 Rust 后端：优先下载官方 cdylib，拿不到（我们没有 .git、没有 tag）
+      # 就退回 cargo 从源码编译。runner 自带 rustup/cargo，所以这条路可行。
+      # 产物落在插件目录内，随 pack/ 进包。
+      #
+      # JIEBA_VIM_INSTALL_NVIM=1 是**必须**的：它的 build 脚本默认编的是给 Vim 用的
+      # py3 绑定、落到 pythonx/；只有设了这个开关才编 Neovim 的 lua51 绑定、落到
+      # lua/jieba_vim/。第一次 CI 就是因此在 lua/ 下找不到产物。
       - name: 构建 jieba.vim 的 Rust 后端
         shell: pwsh
+        env:
+          JIEBA_VIM_INSTALL_NVIM: '1'
         run: |
           $ErrorActionPreference = 'Stop'
           Push-Location pack/distro/start/jieba.vim
@@ -167,7 +210,13 @@ jobs:
           } finally { Pop-Location }
           $ext = if ($env:RUNNER_OS -eq 'Windows') { 'dll' } else { 'so' }
           $lib = "pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs.$ext"
-          if (-not (Test-Path $lib)) { throw "构建后仍找不到 $lib" }
+          if (-not (Test-Path $lib)) {
+            Write-Host '未在预期位置找到产物，列出可能的位置以便诊断：'
+            Get-ChildItem pack/distro/start/jieba.vim/lua, pack/distro/start/jieba.vim/pythonx -Recurse -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.Extension -in @('.so', '.dll', '.pyd') } |
+              ForEach-Object { Write-Host ("  {0}  {1:N0} 字节" -f $_.FullName, $_.Length) }
+            throw "构建后仍找不到 $lib"
+          }
           Get-Item $lib | Select-Object FullName, Length
 
       - name: 采集产物
