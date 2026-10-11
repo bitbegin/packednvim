@@ -106,13 +106,20 @@ jobs:
           path: pack/distro
 
       # ---- 运行时：把 Neovim 取下来放进 runtime/ -------------------------
+      # 传 GITHUB_TOKEN：未认证的 API 每 IP 每小时只有 60 次，而本工作流有 5 个平台
+      # 各自要查 Neovim + 6 个工具仓库，很容易撞限流（限流时响应没有 assets 字段，
+      # 会伪装成「上游没有这个产物」）。
       - name: 取 Neovim 本体
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./tools/fetch-runtime.ps1 -Platform ${{ matrix.id }} -Tag $env:NVIM_TAG
 
       # ---- 随包工具：只取本平台那一份 ------------------------------------
       - name: 取随包工具
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./tools/fetch-tools.ps1 -Platform ${{ matrix.tools }}
 
       - name: 让 PATH 指向包内的 nvim

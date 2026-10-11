@@ -72,14 +72,34 @@ $Curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
 if (-not $Curl) { $Curl = (Get-Command curl -ErrorAction SilentlyContinue).Source }
 if (-not $Curl) { throw '找不到 curl —— 取运行时与工具都依赖它' }
 
+# 认证头：CI 里未认证的 GitHub API 每个 IP 每小时只有 60 次，而本工作流有 5 个平台，
+# 每个平台都要查 Neovim 与 6 个工具仓库 —— 很容易撞上限流。带上 token 后额度是 5000。
+#
+# 限流的表现非常隐蔽：返回 {"message":"API rate limit exceeded..."}，**没有 assets 字段**，
+# 于是错误信息会变成「找不到资产：现有产物：（空）」—— 空列表让人完全想不到是限流。
+$apiHeaders = @()
+$token = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } elseif ($env:GH_TOKEN) { $env:GH_TOKEN } else { $null }
+if ($token) { $apiHeaders = @('-H', "Authorization: Bearer $token") }
+
 # 查 API 不加代理：GitHub 托管的 runner 直连很快，代理是给本地慢网络用的。
 $apiArgs = @('-sS', '--max-time', '120')
 
 Write-Host "=== 1. 查询 Neovim 发布信息（$Tag）===" -ForegroundColor Cyan
-Write-Host ("  curl: {0}" -f $Curl)
-$raw = & $Curl @apiArgs -sSL "https://api.github.com/repos/neovim/neovim/releases/tags/$Tag" 2>$null
-if ($LASTEXITCODE -ne 0 -or -not $raw) { throw "取不到 Neovim $Tag 的发布信息（可能是限流）" }
-$release = $raw | ConvertFrom-Json
+Write-Host ("  curl : {0}" -f $Curl)
+Write-Host ("  token: {0}" -f $(if ($token) { '已带上' } else { '未带（可能被限流）' }))
+
+$raw = & $Curl @apiArgs @apiHeaders -sSL "https://api.github.com/repos/neovim/neovim/releases/tags/$Tag" 2>$null
+# curl 的输出被 PowerShell 捕获成**按行拆分的字符串数组**，
+# 直接管道给 ConvertFrom-Json 会逐行解析，结果是不可预期的。先拼回一个字符串。
+$json = ($raw -join "`n")
+if (-not $json) { throw "取不到 Neovim $Tag 的发布信息（网络问题？）" }
+$release = $json | ConvertFrom-Json
+
+# 明确区分「API 报错」与「真的没有这个产物」，否则又会出现空列表那种难查的现象
+if (-not $release.assets) {
+    $why = if ($release.message) { $release.message } else { '响应里没有 assets 字段' }
+    throw "查询 Neovim $Tag 失败：$why"
+}
 
 $asset = $release.assets | Where-Object { $_.name -eq $assetName } | Select-Object -First 1
 if (-not $asset) {

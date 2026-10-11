@@ -108,6 +108,12 @@ $Curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
 if (-not $Curl) { $Curl = (Get-Command curl -ErrorAction SilentlyContinue).Source }
 if (-not $Curl) { throw '找不到 curl' }
 
+# 认证头：CI 里未认证的 API 每小时只有 60 次，而本工作流每个平台都要查 6 个工具仓库 × 5 平台，
+# 很容易撞限流。限流响应没有 assets 字段，会伪装成「上游没有这个产物」。
+$apiHeaders = @()
+$token = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } elseif ($env:GH_TOKEN) { $env:GH_TOKEN } else { $null }
+if ($token) { $apiHeaders = @('-H', "Authorization: Bearer $token") }
+
 # -Proxy 是**URL 前缀式**代理（如 https://ghfast.top/ ），不是 HTTP CONNECT 代理。
 # 所以只对下载地址加前缀，不传 curl 的 --proxy —— 两者混用会套两层。
 
@@ -123,15 +129,26 @@ $relCache = @{}
 foreach ($spec in Get-Specs -P $Platform) {
     Write-Host ("`n-- {0}" -f $spec.Tool) -ForegroundColor Cyan
 
-    # 同一个仓库多个平台共用，每个仓库只查一次 API（不加代理，runner 直连很快）
+    # 同一个仓库多个平台共用，每个仓库只查一次 API
     if (-not $relCache.ContainsKey($spec.Repo)) {
-        $raw = & $Curl -sSL --max-time 120 "https://api.github.com/repos/$($spec.Repo)/releases/latest" 2>$null
-        if ($LASTEXITCODE -ne 0 -or -not $raw) {
-            $missing += [pscustomobject]@{ tool=$spec.Tool; reason='查询 releases 失败'; pattern=$spec.Pattern }
+        $raw = & $Curl @apiHeaders -sSL --max-time 120 "https://api.github.com/repos/$($spec.Repo)/releases/latest" 2>$null
+        # curl 输出是按行拆分的数组，必须拼回字符串再解析
+        $json = ($raw -join "`n")
+        if (-not $json) {
+            $missing += [pscustomobject]@{ tool=$spec.Tool; reason='查询 releases 失败（空响应）'; pattern=$spec.Pattern }
             Write-Host '   查询失败，跳过' -ForegroundColor Yellow
             continue
         }
-        $relCache[$spec.Repo] = $raw | ConvertFrom-Json
+        $rel = $json | ConvertFrom-Json
+        # 明确区分「API 报错」与「真的没有这个产物」。若混为一谈，
+        # 限流会被误报成「上游没有该平台的产物」，是个会误导人的结论。
+        if (-not $rel.assets) {
+            $why = if ($rel.message) { $rel.message } else { '响应里没有 assets 字段' }
+            $missing += [pscustomobject]@{ tool=$spec.Tool; reason="查询失败：$why"; pattern=$spec.Pattern }
+            Write-Host ("   查询失败：{0}" -f $why) -ForegroundColor Red
+            continue
+        }
+        $relCache[$spec.Repo] = $rel
     }
     $rel = $relCache[$spec.Repo]
 
