@@ -58,13 +58,21 @@ return {
         --     但它是**替换**语义。
         file_ignore_patterns = { '^%.local/' },
 
-        -- 注意：fd_opts 是替换语义，所以这里的值必须与 fzf-lua 的默认保持一致，
-        -- 我只在结尾追加了 --exclude .local。
+        -- 注意：fd_opts 必须写在 files 之下。
+        --
+        -- fzf-lua 的键分两类：file_ignore_patterns 这类是**全局**键（顶层即可），
+        -- 而 fd_opts 属于**每个 provider 各自**的配置（defaults.lua 里它在
+        -- M.defaults.files = { ... } 之下）。我一开始写成顶层，结果被静默忽略 ——
+        -- 截取命令才看出来：下发的仍是默认值，没有我加的 --exclude .local。
+        --
+        -- 它是**替换**语义，所以值必须与默认一致，只在结尾追加 --exclude .local。
         -- 默认值来源：fzf-lua/defaults.lua 的 M.defaults.files.fd_opts
         --   [[--color=never --type f --type l --exclude .git --exclude .jj]]
         -- 上游若增删默认排除项，这里会落后 —— 代价是「多排或少排一个目录」，
         -- 比丢掉 .git 那种「列表混进版本库内部」的后果轻得多，故可接受。
-        fd_opts = '--color=never --type f --type l --exclude .git --exclude .jj --exclude .local',
+        files = {
+          fd_opts = '--color=never --type f --type l --exclude .git --exclude .jj --exclude .local',
+        },
 
         winopts = {
           height = 0.85,
