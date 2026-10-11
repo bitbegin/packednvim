@@ -82,6 +82,19 @@ opt.showmode = false           -- 模式已由状态栏显示，再显示一次�
 opt.laststatus = 3             -- 全局状态栏
 opt.splitright = true
 opt.splitbelow = true
+
+-- 从 quickfix / 搜索结果跳转时**开新标签页**，而不是横着切出更多窗口。
+--
+-- 起因是实际使用：搜完按回车看结果，窗口会越切越多（编辑区本来就分过屏的话，
+-- copen 再加一个结果窗口就是三个横向窗口，屏幕被切得很碎）。
+-- 新标签页的语义更清楚：一个文件一个标签页，<C-w> 系列的窗口操作也不再互相牵制。
+--
+-- usetab 写在前面：目标文件已经在某个标签页里显示时，直接切过去而不重复开 ——
+-- 否则用 <leader>sn / <leader>sp 在结果间翻动会开出一堆重复的标签页。
+-- newtab 兜底：文件还没打开过，才新建标签页。
+--
+-- 这一项是全局的，因此 LSP 查引用（gr）等 quickfix 跳转也同样受益。
+opt.switchbuf = 'usetab,newtab'
 opt.list = true
 -- listchars 这里有个真实的坑：`ambiwidth=double` 会把**东亚「歧义宽度」字符**
 -- （`·` U+00B7、`␣` U+2423、`»` U+00BB 都是）当成 2 格宽，而 listchars 要求
