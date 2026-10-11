@@ -19,3 +19,28 @@ nvim.log
 # Python 字节码缓存
 __pycache__/
 *.pyc
+
+# ---------------------------------------------------------------------------
+# bin/ 里的工具二进制由 tools/fetch-tools.ps1 在 CI 构建时按平台下载。
+# 6 个平台的二进制上百 MB，提交进 git 会让仓库**永久**膨胀 ——
+# git 历史不会因为后来的删除而变小，所以一开始就不该进去。
+#
+# 例外：bin/im-select.exe 留在版本库。它上游的产物名不含平台信息（无法可靠匹配），
+# 只有约 200 KB，且只在 Windows 需要 —— 为它写一套猜测式的下载规则不划算。
+# ---------------------------------------------------------------------------
+bin/rg
+bin/rg.exe
+bin/fzf
+bin/fzf.exe
+bin/fd
+bin/fd.exe
+bin/stylua
+bin/stylua.exe
+bin/shfmt
+bin/shfmt.exe
+bin/shellcheck
+bin/shellcheck.exe
+
+# 构建产物
+runtime/
+dist/

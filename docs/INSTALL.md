@@ -11,20 +11,34 @@
 
 ## 一、安装说明
 
+### 0. 先挑对包
+
+本发行版**按平台分别出包**，包里已经带了 Neovim 本体、插件、随包工具与
+预编译的 tree-sitter 解析器：
+
+| 平台 | 文件名 |
+| --- | --- |
+| Windows x86_64 | `packednvim-win64.zip` |
+| Linux x86_64 | `packednvim-linux64.tar.gz` |
+| Linux arm64 | `packednvim-linux-arm64.tar.gz` |
+| macOS Intel | `packednvim-darwin-x64.tar.gz` |
+| macOS Apple Silicon | `packednvim-darwin-arm64.tar.gz` |
+
+Windows arm64 暂不出包（见 `DECIDED.md`）。
+
 ### 1. 前置条件
 
 | 条件 | 说明 |
 | --- | --- |
-| **Neovim 0.12 或更高** | ⚠️ **本发行版不含 Neovim 本体**，只含配置、插件与随包工具。需自行安装 |
 | **Nerd Font** | 强依赖。状态栏、文件类型图标、诊断符号都用 Nerd Font 字形；不装会显示成方块 |
+| Neovim | **不需要自己装** —— 包里带了一份（`runtime/`） |
+| C 编译器 | **不需要**。tree-sitter 解析器已用包内那个 Neovim 预先编译好 |
 | 语言服务器（可选） | 按决定**不打包**。缺了不影响启动，只是没有补全与跳转 |
-| C 编译器 | **不需要**。tree-sitter 解析器已预编译并随包分发 |
 
-装好 Neovim 后，确认它可用：
-
-```bash
-nvim --version    # 第一行应是 NVIM v0.12.x 或更高
-```
+> 为什么把 Neovim 一起打包：tree-sitter 解析器与 Neovim 内嵌的 tree-sitter 运行时
+> 强耦合。解析器若由「某一个」Neovim 编译、却被「另一个」加载，上游一旦抬高最低
+> 兼容 ABI，用户就会突然失去语法高亮。现在**由包里这个 Neovim 亲自编译、再自己
+> 加载**，这条风险链被彻底切断。代价是包大一些，换来的是确定性 —— 详见原理 11。
 
 ### 2. 解压
 
