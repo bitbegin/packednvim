@@ -58,9 +58,11 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root          = Split-Path -Parent $PSScriptRoot
-$selectionPath = Join-Path $root 'build\selection.json'
-$lockPath      = Join-Path $root 'vendor\lock.json'
-$packRoot      = Join-Path $root 'pack\distro'
+# 一律用正斜杠：本脚本既在 Windows 打包机上跑，也会在 GitHub Actions 的
+# ubuntu runner 上跑。反斜杠在 Linux 下不是路径分隔符，会直接找不到文件。
+$selectionPath = Join-Path $root 'build/selection.json'
+$lockPath      = Join-Path $root 'vendor/lock.json'
+$packRoot      = Join-Path $root 'pack/distro'
 $startRoot     = Join-Path $packRoot 'start'
 $optRoot       = Join-Path $packRoot 'opt'
 
@@ -332,8 +334,9 @@ $newLock = [ordered]@{
     plugins      = @(($results + $kept) | Sort-Object repo)
 }
 New-Item -ItemType Directory -Force -Path (Split-Path $lockPath) | Out-Null
-$newLock | ConvertTo-Json -Depth 6 |
-    Set-Content -Path $lockPath -Encoding utf8
+# 用 LF 写 lock：它是提交进版本库的文件，Windows 上 Set-Content 会写 CRLF
+$lockText = ($newLock | ConvertTo-Json -Depth 6) -replace "`r`n", "`n"
+[System.IO.File]::WriteAllText($lockPath, $lockText, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host ("  已写出 {0}（本次更新 {1} 个，保留旧记录 {2} 个）" -f $lockPath, $results.Count, $kept.Count)
 
 # --------------------------------------------------------------------

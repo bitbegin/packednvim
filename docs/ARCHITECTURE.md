@@ -193,6 +193,8 @@ vendoring 时顺手做的事（`vendor/lock.json` 里记录）：仓库 commit�
 
 当前需要特别标注的 copyleft 项：`git`（GPL-2.0）、`nvim-lint`（GPL-3.0）、`bin/shellcheck`（GPL-3.0）——都要与 MIT 配置代码保持可分离。目录里原本两个许可待核项（`nvim-tree/nvim-tree.lua` 与 `romgrk/barbar.nvim`）已按决定移除，不再需要处理。
 
+`tpope/vim-repeat` 仓库里**没有 LICENSE 文件**，所以 `vendor/lock.json` 的 `license_files` 是空的——但它的 README 明确写着 *"Distributed under the same terms as Vim itself"*（即 Vim license）。这是扫描只按文件名找 `LICEN*` 造成的假阴性，不是许可缺失。写配置骨架时顺带把这条记进包内说明。
+
 ## 9. 需要你拍板的事项
 
 1. **`bin/` 里放哪些工具？** 已定：**外部工具都打进 `bin/`**。当前已就位（都经官方 SHA256 校验）：

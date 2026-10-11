@@ -1,0 +1,293 @@
+# 在 GitHub 上自动打包并发布到 Release。
+#
+# 为什么要分三个 job：包里有三样东西是**平台相关**的，单个 runner 编不出来 ——
+#   tree-sitter 解析器（.so / .dll，且 ABI 与 Neovim 版本强耦合）
+#   blink.cmp 的 Rust 模糊匹配库
+#   jieba.vim 的 Rust cdylib
+# 所以流程是「拉插件（一次）→ 两平台各采集一次产物 → 汇总成一个包」。
+#
+# 一个必须知道的取舍：nightly 是滚动标签，官方只保留最新一份，**无法按版本回溯下载**。
+# 所以用 nightly 构建出来的包不是逐字节可复现的，且 nightly 一升级、
+# tree-sitter 解析器的 ABI 就可能失配（见 docs/ARCHITECTURE.md 第 5 节）。
+# 想要可复现，就把 nvim_tag 固定到一个稳定标签（如 v0.12.6）。
+name: build-and-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '发布用的 tag（留空则只产出 artifact，不建 Release）'
+        required: false
+        default: ''
+      nvim_tag:
+        description: 'Neovim 版本标签：nightly 或 v0.12.6 这类稳定标签'
+        required: false
+        default: 'nightly'
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+# 用 github.event.inputs 而不是 inputs：push 触发时没有 inputs 上下文，
+# 而 github.event.inputs 在两种触发下都能安全取到（取不到就是 null）。
+env:
+  NVIM_TAG: ${{ github.event.inputs.nvim_tag || 'nightly' }}
+
+jobs:
+  # ==========================================================================
+  # 1. 拉插件。与平台无关，只做一次。
+  # ==========================================================================
+  vendor:
+    name: 拉取插件
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 由目录勾选重新生成 selection.json
+        run: python3 tools/parse_selection.py
+
+      - name: 校验方案里没有同格多选
+        run: python3 tools/check-stack.py
+
+      - name: 校验 bin/ 与 manifest.json 一致
+        run: python3 tools/verify-binaries.py
+
+      - name: 按 vendor/lock.json 拉取插件（锁定 commit）
+        shell: pwsh
+        run: ./tools/vendor.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pack
+          path: pack/distro
+          retention-days: 3
+
+  # ==========================================================================
+  # 2. 分平台采集预编译产物。
+  #    策略是让插件自己 bootstrap（它们本来就会下载/编译预编译产物），
+  #    而不是我们复刻它们的构建细节 —— 后者会随上游改动而失效。
+  # ==========================================================================
+  harvest:
+    name: 采集产物（${{ matrix.platform }}）
+    needs: vendor
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux64
+          - os: windows-latest
+            platform: win64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pack
+          path: pack/distro
+
+      # 两个平台都用 pwsh：它在 ubuntu runner 上预装，且比 bash 更能可靠地
+      # 解压 zip —— Windows runner 的 bash 里不一定有 unzip。
+      - name: 安装 Neovim
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:NVIM_TAG
+          if ($env:RUNNER_OS -eq 'Windows') {
+            $url = "https://github.com/neovim/neovim/releases/download/$tag/nvim-win64.zip"
+            $zip = Join-Path $env:RUNNER_TEMP 'nvim.zip'
+            Invoke-WebRequest -Uri $url -OutFile $zip
+            Expand-Archive -Path $zip -DestinationPath $env:RUNNER_TEMP -Force
+            (Join-Path $env:RUNNER_TEMP 'nvim-win64\bin') | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          } else {
+            $url = "https://github.com/neovim/neovim/releases/download/$tag/nvim-linux-x86_64.tar.gz"
+            $tgz = Join-Path $env:RUNNER_TEMP 'nvim.tar.gz'
+            Invoke-WebRequest -Uri $url -OutFile $tgz
+            tar -xzf $tgz -C $env:RUNNER_TEMP
+            (Join-Path $env:RUNNER_TEMP 'nvim-linux-x86_64/bin') | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+          }
+
+      - name: 安装 tree-sitter CLI
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # nvim-treesitter 的 main 分支要求 tree-sitter CLI >= 0.26.1（不是 npm 那个包）
+          $ver = 'v0.27.1'
+          $dir = Join-Path $env:RUNNER_TEMP 'ts'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          if ($env:RUNNER_OS -eq 'Windows') {
+            $asset = 'tree-sitter-cli-windows-x64.zip'
+          } else {
+            $asset = 'tree-sitter-cli-linux-x64.zip'
+          }
+          $zip = Join-Path $env:RUNNER_TEMP 'ts.zip'
+          Invoke-WebRequest -Uri "https://github.com/tree-sitter/tree-sitter/releases/download/$ver/$asset" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          if ($env:RUNNER_OS -ne 'Windows') { chmod +x (Join-Path $dir 'tree-sitter') }
+          $dir | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      # Windows 上编译解析器需要 MSVC 的 C 编译器在 PATH 上。
+      # 这是第三方 action（供应链上要注意）—— 要更严格就把它钉到某个 commit SHA。
+      - name: 准备 MSVC 环境（仅 Windows）
+        if: matrix.platform == 'win64'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: 采集产物
+        shell: pwsh
+        env:
+          # 指向干净目录：插件会把产物放进这里，我们再整体收走，
+          # 这样就不必去猜每个插件的内部路径。
+          XDG_DATA_HOME: ${{ github.workspace }}/build/xdg-data
+          XDG_STATE_HOME: ${{ github.workspace }}/build/xdg-state
+          XDG_CACHE_HOME: ${{ github.workspace }}/build/xdg-cache
+          HARVEST_OUT: ${{ github.workspace }}/build/prebuilt
+          HARVEST_SANDBOX: ${{ github.workspace }}/build
+          DISTRO_ROOT: ${{ github.workspace }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path build/prebuilt | Out-Null
+          nvim --version | Select-Object -First 2
+          nvim --headless -u init.lua -l tools/harvest.lua
+
+      - name: 打印产物清单（首次运行时靠它确认路径）
+        shell: pwsh
+        run: Get-Content build/prebuilt/listing.txt -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt-${{ matrix.platform }}
+          path: build/prebuilt
+          retention-days: 3
+
+  # ==========================================================================
+  # 3. 汇总成一个包并发布
+  # ==========================================================================
+  package:
+    name: 组装并发布
+    needs: [vendor, harvest]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: pack
+          path: pack/distro
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: prebuilt-*
+          path: build/prebuilt
+
+      - name: 校验两个平台的产物都在
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in linux64 win64; do
+            d="build/prebuilt/prebuilt-$p/neovim-data"
+            if [ ! -d "$d" ]; then echo "缺少 $p 的产物：$d"; exit 1; fi
+            echo "$p: $(find "$d" -type f | wc -l) 个文件"
+          done
+
+      - name: 组装发行版目录
+        shell: bash
+        run: |
+          set -euo pipefail
+          NVIM_TAG="$NVIM_TAG" python3 - <<'PY'
+          import json, os, shutil, pathlib
+
+          root = pathlib.Path('.')
+          out = root / 'dist' / 'packednvim'
+          if out.exists():
+              shutil.rmtree(out)
+
+          # 运行期需要的；catalog/ tools/ tests/ 是开发用的，不进包
+          INCLUDE = ['init.lua', 'lua', 'pack', 'bin', 'vendor', 'docs', 'README.md']
+
+          for name in INCLUDE:
+              src = root / name
+              if not src.exists():
+                  print(f'  跳过（不存在）：{name}')
+                  continue
+              dst = out / name
+              if src.is_dir():
+                  shutil.copytree(src, dst, ignore=shutil.ignore_patterns('.git'))
+              else:
+                  dst.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copy2(src, dst)
+              print(f'  已放入：{name}')
+
+          # 两平台的预编译产物各归各位。具体子路径等首次 CI 的 listing.txt
+          # 出来后再在配置里钉死，现在先原样保留整棵树以免猜错。
+          for p in ('linux64', 'win64'):
+              src = root / 'build' / 'prebuilt' / f'prebuilt-{p}' / 'neovim-data'
+              dst = out / 'vendor' / 'prebuilt' / p / 'neovim-data'
+              shutil.copytree(src, dst)
+              print(f'  已放入预编译产物：{p}')
+
+          # 让包自己说清它是什么、怎么来的
+          lock = json.loads((root / 'vendor' / 'lock.json').read_text(encoding='utf-8'))
+          (out / 'VERSION').write_text(
+              '\n'.join([
+                  f'neovim-baseline: {os.environ.get("NVIM_TAG", "?")}',
+                  f'plugins: {len(lock["plugins"])}',
+                  f'commit: {os.environ.get("GITHUB_SHA", "?")}',
+                  f'built-by: GitHub Actions run {os.environ.get("GITHUB_RUN_ID", "?")}',
+                  '',
+              ]),
+              encoding='utf-8', newline='\n')
+
+          total = sum(f.stat().st_size for f in out.rglob('*') if f.is_file())
+          print(f'  组装完成，未压缩 {total / 1024 / 1024:.1f} MB')
+          PY
+
+      - name: 打包
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          (cd dist && zip -qr packednvim.zip packednvim)
+          ls -lh dist/packednvim.zip
+          sha256sum dist/packednvim.zip | tee dist/packednvim.zip.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packednvim-package
+          path: |
+            dist/packednvim.zip
+            dist/packednvim.zip.sha256
+          retention-days: 30
+
+      - name: 发 Release
+        # push 事件短路，避免在 workflow_dispatch 之外做 null 比较
+        if: github.event_name == 'push' || github.event.inputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+
+          cp dist/packednvim/VERSION dist/RELEASE-NOTES.md
+          {
+            echo
+            echo "包内含 Windows 与 Linux 两套二进制与预编译产物，解压即用。"
+            echo
+            echo '```'
+            cat dist/packednvim.zip.sha256
+            echo '```'
+          } >> dist/RELEASE-NOTES.md
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/packednvim.zip dist/packednvim.zip.sha256 --clobber
+          else
+            gh release create "$TAG" dist/packednvim.zip dist/packednvim.zip.sha256 \
+              --title "$TAG" --notes-file dist/RELEASE-NOTES.md
+          fi

@@ -11,7 +11,9 @@
 | 需求 5 搜索工作流 | ✅ 已实现，27 项断言在 `nvim 0.13.0-dev-1828` 上全部通过 |
 | 随包分发的命令行工具 | 🚧 进行中：`rg` / `fzf` / `fd` / `stylua` 已就位，`shfmt` / `ruff` 在补；版本记录见 [`bin/README.md`](bin/README.md) |
 | Neovim 本体 | ✅ 已装并可用：`D:\tools\nvim-win64\bin\nvim.exe`，已在 PATH 上 |
-| 插件 vendoring（`tools/vendor.ps1`） | ✅ 脚本已完成并通过 `-DryRun` 校验；**尚未实际联网拉取** |
+| 插件 vendoring（`tools/vendor.ps1`） | ✅ 已执行：45/45 成功，41.4 MB，`vendor/lock.json` 已锁定 commit |
+| GitHub Actions 自动打包发布 | ✅ workflow 已写好（`.github/workflows/release.yml`）；**尚未实际跑过** |
+| 预置三个「编译/下载」风险项的产物 | ✅ 逻辑已写（`tools/harvest.lua`），由 CI 分平台执行 |
 | 配置骨架（插件装配 / LSP / 主题） | ⬜ 待做 |
 
 跑测试（会真正调用 `rg`，所以需要能创建子进程的环境）：
@@ -77,7 +79,8 @@ python tools/check-stack.py                                   # 校验方案里�
 | [`docs/SEARCH-WORKFLOW.md`](docs/SEARCH-WORKFLOW.md) | 需求 5 的完整方案：`grepprg` 配置、quickfix 鼠标跳转映射、大文件降级代码、rg 与 fzf-lua 两条路线的取舍 |
 | [`docs/RESEARCH-NOTES.md`](docs/RESEARCH-NOTES.md) | 调研原始事实与来源：版本代际、管理器对比、依赖矩阵、可移植二进制来源、离线翻车清单 |
 | [`bin/README.md`](bin/README.md) | 随包分发的工具：版本、SHA256、许可证、注意事项 |
-| [`tools/`](tools) | `parse_selection.py`（选型解析）、`check-stack.py`（互斥格校验）、`verify-repos.py`（核验地址）、`vendor.ps1`（拉取插件到 `pack/`）、`fetch-binaries.ps1`（取工具） |
+| [`tools/`](tools) | `parse_selection.py`（选型解析）、`check-stack.py`（互斥格校验）、`verify-repos.py`（核验地址）、`verify-binaries.py`（校验 bin/ 完整性）、`vendor.ps1`（拉取插件）、`harvest.lua`（CI 分平台采集预编译产物）、`fetch-binaries.ps1`（取工具） |
+| [`.github/workflows/release.yml`](.github/workflows/release.yml) | CI：拉插件 → 两平台各采集一次产物 → 汇总成一个包 → 发 Release |
 
 ## 已定 vs 待定
 
