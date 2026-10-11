@@ -186,8 +186,8 @@
       "repo": "kkew3/jieba.vim",
       "dir": "pack/distro/start/jieba.vim",
       "pack": "start",
-      "branch": "main",
-      "commit": "7a5cdbce6b0c1f4c9a7e5bc12dd176ae153b3433",
+      "branch": "release",
+      "commit": "a8682dce052b2f689d5786c940d04a913d58c29e",
       "bytes": 2826774,
       "license_files": [
         "LICENSE.txt"
@@ -462,13 +462,25 @@
       "repo": "saghen/blink.cmp",
       "dir": "pack/distro/start/blink.cmp",
       "pack": "start",
-      "branch": "main",
-      "commit": "8219b58f1c11a2fb1644d3c7116c509fa8348ec0",
-      "bytes": 1242468,
+      "branch": "HEAD",
+      "commit": "78336bc89ee5365633bcf754d93df01678b5c08f",
+      "bytes": 1291743,
       "license_files": [
         "LICENSE"
       ],
       "clone_url": "https://github.com/saghen/blink.cmp.git"
+    },
+    {
+      "repo": "saghen/blink.lib",
+      "dir": "pack/distro/start/blink.lib",
+      "pack": "start",
+      "branch": "main",
+      "commit": "fd9a48ebbe6ec30d5dfcc5b42c243941ccdca1aa",
+      "bytes": 141496,
+      "license_files": [
+        "LICENSE"
+      ],
+      "clone_url": "https://github.com/saghen/blink.lib.git"
     },
     {
       "repo": "sainnhe/gruvbox-material",

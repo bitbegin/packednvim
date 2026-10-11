@@ -1,27 +1,25 @@
 -- 在 CI 里采集「平台相关」的产物。
 --
--- 为什么需要它：包里有三样东西无法只编一次就同时满足 Windows 与 Linux ——
+-- 为什么需要它：包里有三样东西跟平台绑定，无法只编一次就同时满足 Windows 与 Linux ——
 --   tree-sitter 解析器（.so / .dll，且 ABI 与 Neovim 版本强耦合）
 --   blink.cmp 的 Rust 模糊匹配库
 --   jieba.vim 的 Rust cdylib
--- 所以流程是「两个平台各跑一次本脚本 → 各自产出 → 汇总进一个包」。
 --
--- 本脚本的策略是**让插件自己 bootstrap**，而不是我们手写 cargo / tree-sitter 命令：
--- 这三个插件本来就带「下载或编译预编译产物」的逻辑，在 CI 里（有网）直接借用它，
--- 比复刻它们的构建细节可靠得多 —— 也不会随上游改动而失效。
+-- 分工（这个划分是查过源码后定的，不是猜的）：
+--   * tree-sitter 解析器 → 装进 stdpath('data')/site，**必须由本脚本收走**
+--   * blink.cmp 的原生库   → 落在 <插件>/target/release/，**在 pack/ 内部，随包自动带上**
+--   * jieba.vim 的 cdylib  → 落在 <插件>/lua/jieba_vim/，同上，由 workflow 调它的 build 脚本
+--   所以本脚本只需采集 tree-sitter 那部分。
 --
--- 用法（CI 里）：
+-- 策略是**让插件自己 bootstrap**（它们本来就带下载/编译逻辑），而不是我们复刻构建细节 ——
+-- 后者会随上游改动失效。CI 有网，正好借这个能力。
+--
+-- 用法：
 --   nvim --headless -u <distro>/init.lua -l tools/harvest.lua
 -- 环境变量：
---   DISTRO_ROOT   发行版根目录（默认取脚本上两级）
+--   DISTRO_ROOT   发行版根目录（默认由 MYVIMRC 推断）
 --   HARVEST_OUT   产物输出目录（默认 build/prebuilt）
---   XDG_DATA_HOME 必须由调用方指向一个干净的临时目录 —— 插件会把产物放进这里，
---                 我们再整体收走。这里刻意不去猜每个插件的内部路径。
---
--- 产出布局：
---   $HARVEST_OUT/neovim-data/...    stdpath('data') 的完整副本（含 parser/ 与 queries/）
---   $HARVEST_OUT/listing.txt        文件清单与体积，供诊断用
--- 脚本会在结束时打印清单。**没有产出就报错退出**，不留一个「看起来成功」的空产物。
+--   XDG_DATA_HOME 必须由调用方指向干净临时目录，插件产物会落在这里
 
 local function env(name, default)
   local v = vim.env[name]
@@ -29,30 +27,22 @@ local function env(name, default)
   return v
 end
 
-local function dirname(p) return vim.fn.fnamemodify(p, ':h') end
-
-local distro = vim.fs.normalize(env('DISTRO_ROOT', dirname(dirname(vim.env.MYVIMRC or '.'))))
+local distro = vim.fs.normalize(env('DISTRO_ROOT', vim.fn.fnamemodify(vim.env.MYVIMRC or '.', ':h')))
 local out = vim.fs.normalize(env('HARVEST_OUT', distro .. '/build/prebuilt'))
 local data = vim.fs.normalize(vim.fn.stdpath('data'))
 
 local log = function(msg) io.write('[harvest] ' .. msg .. '\n') end
-
 log('distro = ' .. distro)
 log('out    = ' .. out)
 log('data   = ' .. data)
 log('nvim   = ' .. tostring(vim.version()))
 
--- XDG_DATA_HOME 必须是干净的临时目录，否则会把开发机上的既有产物一起收走。
-if not vim.startswith(data, vim.fs.normalize(env('HARVEST_SANDBOX', out))) then
-  log('警告：stdpath(data) 不在预期的沙箱目录内 —— 请让 CI 把 XDG_DATA_HOME 指向临时目录')
-end
-
 vim.fn.mkdir(out, 'p')
 
 -- ---------------------------------------------------------------------------
 -- 1. tree-sitter 解析器
---    nvim-treesitter 的 install_dir 可配置，装到临时 data 目录下的 site/。
---    解析器列表按发行版实际要支持的语言来（少装几个能显著缩短 CI 时间）。
+--    列表按发行版实际要支持的语言来（少装几个能明显缩短 CI 时间）。
+--    nvim-treesitter 的 install_dir 默认是 stdpath('data')/site，正好在我们要收走的目录里。
 -- ---------------------------------------------------------------------------
 local PARSERS = {
   'lua', 'luadoc', 'c', 'cpp', 'python', 'bash', 'markdown', 'markdown_inline',
@@ -62,31 +52,63 @@ local PARSERS = {
 
 local ok_ts, ts = pcall(require, 'nvim-treesitter')
 if ok_ts then
-  log('安装 ' .. #PARSERS .. ' 个 tree-sitter 解析器（需要 tree-sitter CLI + C 编译器）')
+  log(('安装 %d 个 tree-sitter 解析器（需要 tree-sitter CLI + C 编译器）'):format(#PARSERS))
   local ok, err = pcall(function() ts.install(PARSERS) end)
-  if not ok then
-    log('tree-sitter 安装失败：' .. tostring(err))
+  if not ok then log('tree-sitter 安装失败：' .. tostring(err)) end
+else
+  log('require("nvim-treesitter") 失败 —— 插件没在 runtimepath 上？')
+end
+
+-- ---------------------------------------------------------------------------
+-- 2. blink.cmp 的原生库
+--    v1 的逻辑要从 git tag 推断版本，而 vendored 副本没有 .git，
+--    所以用 force_version 明确指定（值取自 vendor/lock.json 记录的 tag，避免两处脱节）。
+--    产物落在 <插件>/target/release/，随 pack/ 一起进包，本脚本不必收走。
+-- ---------------------------------------------------------------------------
+local blink_tag = nil
+local lock_path = distro .. '/vendor/lock.json'
+if vim.fn.filereadable(lock_path) == 1 then
+  local ok, lock = pcall(vim.json.decode, table.concat(vim.fn.readfile(lock_path), '\n'))
+  if ok and lock and lock.plugins then
+    for _, p in ipairs(lock.plugins) do
+      if p.repo == 'saghen/blink.cmp' then blink_tag = p.branch end
+    end
+  end
+end
+log('blink.cmp 目标版本 = ' .. tostring(blink_tag))
+
+local ok_blink, blink = pcall(require, 'blink.cmp')
+if ok_blink then
+  pcall(function()
+    blink.setup({
+      fuzzy = {
+        prebuilt_binaries = {
+          force_version = blink_tag,
+          download = true,
+          ignore_version_mismatch = true,
+        },
+      },
+    })
+  end)
+  -- 主动触发一次下载，并等它落盘
+  local lib_path
+  pcall(function()
+    local files = require('blink.cmp.fuzzy.download.files')
+    lib_path = files.lib_path
+    require('blink.cmp.fuzzy.download').ensure_downloaded(function() end)
+  end)
+  if lib_path then
+    vim.wait(60000, function() return vim.uv.fs_stat(lib_path) ~= nil end, 200)
+    log(('blink 原生库 %s -> %s'):format(lib_path, vim.uv.fs_stat(lib_path) and '已就位' or '缺失'))
+  else
+    log('拿不到 blink 原生库的预期路径')
   end
 else
-  log('require("nvim-treesitter") 失败：插件是否已在 runtimepath 上？')
+  log('require("blink.cmp") 失败：' .. tostring(blink))
 end
 
 -- ---------------------------------------------------------------------------
--- 2 & 3. blink.cmp 与 jieba.vim 的预编译库
---    两者都是「首次使用时下载预编译产物」。这里各触发一次，产物会落到
---    stdpath('data') 下，随后被整体收走。
--- ---------------------------------------------------------------------------
-for _, m in ipairs({ 'blink.cmp', 'jieba_vim' }) do
-  local ok = pcall(require, m)
-  log(('require(%s) -> %s'):format(m, ok and 'ok' or '失败'))
-end
-
--- jieba.vim 提供显式的安装入口，直接调用它比依赖 require 的副作用可靠
-local has_jieba = pcall(vim.cmd, 'call jieba_vim#install()')
-log('jieba_vim#install() -> ' .. (has_jieba and 'ok' or '不可用（插件未加载？）'))
-
--- ---------------------------------------------------------------------------
--- 收走产物 + 打印清单
+-- 3. 收走 stdpath('data')（tree-sitter 的 parser/ 与 queries/ 都在这里）
 -- ---------------------------------------------------------------------------
 local function walk(root)
   local files = {}
@@ -108,26 +130,25 @@ vim.fn.mkdir(dest, 'p')
 local listing, total, copied = {}, 0, 0
 for _, f in ipairs(walk(data)) do
   local rel = f:sub(#data + 2)
-  local size = (vim.fn.getfsize(f) or 0)
-  total = total + math.max(size, 0)
+  local size = math.max(vim.fn.getfsize(f) or 0, 0)
+  total = total + size
   listing[#listing + 1] = string.format('%10d  %s', size, rel)
-  -- 词典等大文件也一并带走，但跳过明显的缓存目录
   if not rel:match('^log/') and not rel:match('shada') then
     local target = dest .. '/' .. rel
-    vim.fn.mkdir(dirname(target), 'p')
+    vim.fn.mkdir(vim.fs.dirname(target), 'p')
     if vim.fn.filereadable(f) == 1 then
       vim.fn.writefile(vim.fn.readfile(f, 'b'), target, 'b')
       copied = copied + 1
     end
   end
 end
-
 table.sort(listing)
 vim.fn.writefile(listing, out .. '/listing.txt')
-
 log(('收走 %d 个文件，原始合计 %.1f MB'):format(copied, total / 1024 / 1024))
 
--- 关键产物缺失就明确失败，别让 CI 报成功却产出空包
+-- ---------------------------------------------------------------------------
+-- 4. 断言：关键产物缺失就明确失败，别让 CI 报成功却产出空包
+-- ---------------------------------------------------------------------------
 local function has(pattern)
   for _, l in ipairs(listing) do
     if l:match(pattern) then return true end
@@ -136,9 +157,19 @@ local function has(pattern)
 end
 
 local problems = {}
-if not has('parser/') then problems[#problems + 1] = '没有任何 tree-sitter 解析器（parser/ 为空）' end
-if not has('blink') then problems[#problems + 1] = '没有 blink.cmp 的预编译库' end
-if not has('jieba') then problems[#problems + 1] = '没有 jieba.vim 的预编译库' end
+if not has('parser/') then problems[#problems + 1] = '没有 tree-sitter 解析器（parser/ 为空）' end
+
+-- blink 的库在 pack/ 内，不在 data 里，所以单独查
+if blink_tag then
+  local ext = jit.os:lower() == 'windows' and '.dll' or '.so'
+  local p = distro .. '/pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy' .. ext
+  if vim.uv.fs_stat(p) == nil then problems[#problems + 1] = 'blink.cmp 原生库缺失：' .. p end
+end
+
+-- jieba 的库由 workflow 里的 build 脚本产出，同样在 pack/ 内
+local jieba_ext = jit.os:lower() == 'windows' and '.dll' or '.so'
+local jieba_lib = distro .. '/pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs' .. jieba_ext
+if vim.uv.fs_stat(jieba_lib) == nil then problems[#problems + 1] = 'jieba.vim cdylib 缺失：' .. jieba_lib end
 
 if #problems > 0 then
   io.write('\n[harvest] 产物不完整：\n')

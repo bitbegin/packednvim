@@ -109,6 +109,15 @@ $START_REPOS = @(
     'kkew3/jieba.vim'
 )
 
+# 少数仓库的**默认分支不能用**，必须指定分支或 tag：
+#   jieba.vim  —— 它需要本地编译 Rust 后端，而 build.sh / build.ps1 只在 release 分支上
+#   blink.cmp  —— main 上的 v2 尚未发布且额外依赖 saghen/blink.lib；
+#                 钉到最新的 v1 tag，才能用官方分平台原生库（带 sha256）
+$BRANCH_OVERRIDES = @{
+    'kkew3/jieba.vim'   = 'release'
+    'saghen/blink.cmp'  = 'v1.10.2'
+}
+
 # --------------------------------------------------------------------
 # 工具函数
 # --------------------------------------------------------------------
@@ -213,14 +222,25 @@ $plan = foreach ($w in $wanted) {
     $dirName = Get-PluginDirName $w.repo
     $pack    = if ($START_REPOS -contains $w.repo) { 'start' } else { 'opt' }
     $packDir = if ($pack -eq 'start') { $startRoot } else { $optRoot }
+
+    # 分支优先级：脚本里的强制指定 > lock 里的记录 > 让 git 自己选默认分支。
+    # 若强制指定与 lock 记录的分支不一致，就丢弃该 pin 重新解析 ——
+    # 否则会拿着另一个分支的 commit 去 fetch，注定失败。
+    $override = if ($BRANCH_OVERRIDES.ContainsKey($w.repo)) { $BRANCH_OVERRIDES[$w.repo] } else { $null }
+    $lockedBranch = if ($locked.ContainsKey($w.repo)) { $locked[$w.repo].branch } else { $null }
+    $branch = if ($override) { $override } else { $lockedBranch }
+    $pin = if ($locked.ContainsKey($w.repo) -and (-not $override -or $override -eq $lockedBranch)) {
+        $locked[$w.repo].commit
+    } else { $null }
+
     [pscustomobject]@{
         Repo    = $w.repo
         DirName = $dirName
         Pack    = $pack
         Dest    = Join-Path $packDir $dirName
         Modules = @($w.modules)
-        Pin     = if ($locked.ContainsKey($w.repo)) { $locked[$w.repo].commit } else { $null }
-        Branch  = if ($locked.ContainsKey($w.repo)) { $locked[$w.repo].branch } else { $null }
+        Pin     = $pin
+        Branch  = $branch
     }
 }
 
@@ -256,25 +276,29 @@ foreach ($p in $plan) {
     for ($attempt = 1; $attempt -le 3 -and -not $ok; $attempt++) {
         if (Test-Path $p.Dest) { Remove-Item $p.Dest -Recurse -Force -ErrorAction SilentlyContinue }
 
-        # 第一次按分支尖端浅克隆；拿到分支名后就固定用它
+        # 按指定分支/tag 浅克隆。
+        # 关键：**指定了分支就绝不回退到默认分支** —— 那会在一次网络抖动后
+        # 悄悄换上另一个分支的代码，拿到的东西与 lock 记录完全不符却还报成功。
+        # 没指定分支时才允许让 git 自己选默认分支。
         $branchArgs = if ($p.Branch) { @('--branch', $p.Branch) } else { @() }
         $clone = Invoke-Git (@('clone', '--depth', '1', '--quiet') + $branchArgs + @($url, $p.Dest))
 
         if ($clone.Code -ne 0) {
-            # 分支名可能变了（或首次没有记录），退一步让 git 自己选默认分支
+            $err = ($clone.Output -split "`n" | Where-Object { $_ } | Select-Object -Last 1)
             if ($p.Branch) {
-                Write-Host ("  第 {0} 次：指定分支 {1} 失败，改用默认分支重试" -f $attempt, $p.Branch) -ForegroundColor DarkGray
-                $clone = Invoke-Git @('clone', '--depth', '1', '--quiet', $url, $p.Dest)
-            }
-            if ($clone.Code -ne 0) {
-                Write-Host ("  第 {0} 次克隆失败：{1}" -f $attempt, ($clone.Output -split "`n" | Select-Object -Last 1)) -ForegroundColor Yellow
+                Write-Host ("  第 {0} 次克隆失败（必须的分支 {1}）：{2}" -f $attempt, $p.Branch, $err) -ForegroundColor Yellow
                 Start-Sleep -Seconds 2
                 continue
             }
+            Write-Host ("  第 {0} 次按默认分支克隆失败：{1}" -f $attempt, $err) -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+            continue
         }
 
         $head = (Invoke-Git @('-C', $p.Dest, 'rev-parse', 'HEAD')).Output.Trim()
-        $br   = (Invoke-Git @('-C', $p.Dest, 'rev-parse', '--abbrev-ref', 'HEAD')).Output.Trim()
+        # 指定了分支/tag 时 checkout 是 detached，`rev-parse --abbrev-ref HEAD` 只会返回
+        # "HEAD" —— 那样 lock 里就丢了「这份代码来自哪个 tag」这个关键信息。
+        $br = if ($p.Branch) { $p.Branch } else { (Invoke-Git @('-C', $p.Dest, 'rev-parse', '--abbrev-ref', 'HEAD')).Output.Trim() }
 
         # 有锁定值就必须落到锁定值上，绝不静默接受漂移
         if ($p.Pin -and $head -ne $p.Pin) {

@@ -111,7 +111,7 @@
 
 ## F. 补全 · 代码片段
 
-- [x] **saghen/blink.cmp** · 作用：高性能补全引擎，当前主流选择 · 依赖：编译/下载 · 档位：core · 许可：MIT · 备注：Rust 模糊匹配器首次使用会联网下载；离线须预置二进制，或设 `fuzzy.implementation = "lua"` 退回纯 Lua（性能下降）
+- [x] **saghen/blink.cmp** · 作用：高性能补全引擎，当前主流选择 · 依赖：编译/下载 · 档位：core · 许可：MIT · 备注：**钉在 tag `v1.10.2`**（最新正式发布版）。main 上的 v2 尚未发布，且额外依赖 `saghen/blink.lib`；v1 有官方分平台原生库与 sha256，更适合发行版
 - [x] **L3MON4D3/LuaSnip** · 作用：片段引擎，兼容 VSCode 与 LSP 片段格式 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0 · 备注：`jsregexp` 为可选的 C 加速库，缺失时自动降级
 - [x] **rafamadriz/friendly-snippets** · 作用：覆盖大量语言的现成片段集合 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [ ] **hrsh7th/nvim-cmp** · 作用：模块化补全框架，稳定但已进入维护模式 · 依赖：纯 Lua · 档位：ide · 许可：MIT

@@ -24,6 +24,7 @@ on:
         required: false
         default: 'nightly'
   push:
+    branches: ['main']
     tags: ['v*']
 
 permissions:
@@ -137,6 +138,37 @@ jobs:
       - name: 准备 MSVC 环境（仅 Windows）
         if: matrix.platform == 'win64'
         uses: ilammy/msvc-dev-cmd@v1
+
+      # bin/ 的可执行位已记在 git 索引里（100755），checkout 时会带上；
+      # 这里再确认一次，纯粹是防「某次文件系统搬运把位丢了」这种低级事故。
+      - name: 确认 bin/ 的可执行位
+        if: matrix.platform == 'linux64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck
+          ls -l bin/rg bin/fzf | awk '{print $1, $NF}'
+
+      # jieba.vim 的 Rust 后端：它自己的 build 脚本优先下载官方 cdylib，
+      # 拿不到（我们没有 .git、没有 tag）就退回 cargo 从源码编译。
+      # runner 自带 rustup/cargo，所以这条路可行。产物落在插件目录内，随 pack/ 进包。
+      - name: 构建 jieba.vim 的 Rust 后端
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Push-Location pack/distro/start/jieba.vim
+          try {
+            if ($env:RUNNER_OS -eq 'Windows') {
+              & pwsh -NoProfile -File ./build.ps1
+            } else {
+              & bash ./build.sh
+            }
+            if ($LASTEXITCODE -ne 0) { throw "jieba 构建脚本退出码 $LASTEXITCODE" }
+          } finally { Pop-Location }
+          $ext = if ($env:RUNNER_OS -eq 'Windows') { 'dll' } else { 'so' }
+          $lib = "pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs.$ext"
+          if (-not (Test-Path $lib)) { throw "构建后仍找不到 $lib" }
+          Get-Item $lib | Select-Object FullName, Length
 
       - name: 采集产物
         shell: pwsh
