@@ -21,14 +21,26 @@ set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-# Neovim 本体：允许用 NVIM_EXE 覆盖，否则从 PATH 找
-NVIMBIN=${NVIM_EXE:-nvim}
+# Neovim 本体的选择顺序（越靠前越确定）：
+#   1. runtime/bin/nvim —— 随包分发的那份。用它意味着包里的 tree-sitter 解析器
+#      就是由这个二进制亲自编译的，ABI 不可能失配，版本行为也完全可预期。
+#   2. NVIM_EXE         —— 显式覆盖，便于测试别的构建。
+#   3. PATH 上的 nvim   —— 兜底；此时版本不再由我们控制。
+if [ -x "$here/runtime/bin/nvim" ]; then
+  NVIMBIN="$here/runtime/bin/nvim"
+elif [ -n "${NVIM_EXE:-}" ]; then
+  NVIMBIN="$NVIM_EXE"
+else
+  NVIMBIN=nvim
+fi
+
 if ! command -v "$NVIMBIN" >/dev/null 2>&1 && [ ! -x "$NVIMBIN" ]; then
   cat >&2 <<'EOF'
 [packednvim] 找不到 Neovim 本体。
 
-  本发行版只包含配置、插件与随包工具，不含 Neovim 自身。
-  请安装 Neovim 0.12+ 并确保 nvim 在 PATH 上，或设置 NVIM_EXE：
+  正常情况下包里应当带一份 runtime/bin/nvim。
+  如果这个包没有带，请安装 Neovim 0.12+ 并确保 nvim 在 PATH 上，
+  或设置 NVIM_EXE：
       export NVIM_EXE=/opt/nvim/bin/nvim
 EOF
   exit 1

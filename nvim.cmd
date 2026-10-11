@@ -30,19 +30,25 @@ setlocal
 set "DISTRO=%~dp0"
 if "%DISTRO:~-1%"=="\" set "DISTRO=%DISTRO:~0,-1%"
 
-rem Resolve the Neovim binary: NVIM_EXE wins, otherwise look it up on PATH.
-if defined NVIM_EXE (
-  set "NVIMBIN=%NVIM_EXE%"
-) else (
-  set "NVIMBIN="
+rem Resolve the Neovim binary.
+rem Preference order, most specific first:
+rem   1. runtime\bin\nvim.exe  - the copy bundled in this package. Using it means the
+rem      tree-sitter parsers in this package were compiled BY this very binary, so
+rem      their ABI cannot mismatch, and the version is whatever we shipped.
+rem   2. NVIM_EXE              - explicit override for testing another build.
+rem   3. nvim.exe on PATH      - last resort; version no longer under our control.
+set "NVIMBIN="
+if exist "%DISTRO%\runtime\bin\nvim.exe" set "NVIMBIN=%DISTRO%\runtime\bin\nvim.exe"
+if not defined NVIMBIN if defined NVIM_EXE set "NVIMBIN=%NVIM_EXE%"
+if not defined NVIMBIN (
   for %%I in (nvim.exe) do set "NVIMBIN=%%~$PATH:I"
 )
 if not defined NVIMBIN (
   echo [packednvim] Cannot find Neovim.
   echo.
-  echo   This distribution ships config, plugins and bundled tools only;
-  echo   it does not include Neovim itself.
-  echo   Install Neovim 0.12+ and make sure nvim.exe is on PATH, or set NVIM_EXE:
+  echo   Expected a bundled copy at runtime\bin\nvim.exe.
+  echo   If this package was built without one, either install Neovim 0.12+
+  echo   and put nvim.exe on PATH, or set NVIM_EXE:
   echo       set NVIM_EXE=D:\tools\nvim-win64\bin\nvim.exe
   exit /b 1
 )
