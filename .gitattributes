@@ -12,3 +12,12 @@ bin/licenses/**  text
 # 必须在 Linux 上原样运行的脚本：强制 LF。
 # 不然某天在 Windows 上编辑后存成 CRLF，shebang 会带上 \r 而直接执行失败。
 *.sh             text eol=lf
+
+# Windows 批处理必须用 CRLF，而且只应含 ASCII —— 两条都是 cmd.exe 的硬要求：
+#   - 它对 LF 结尾的多行 if (...) 块解析不可靠
+#   - 它按系统 OEM 代码页（中文 Windows 上是 GBK）解析文件字节，不认 UTF-8，
+#     所以 .cmd 里的中文注释会被解码错乱、甚至被当成命令执行
+#     （实测：一句中文 rem 让脚本以 9009「命令未找到」退出）
+# 因此 nvim.cmd 保持纯 ASCII，详细的中文说明放在 docs/USAGE.md。
+*.cmd            text eol=crlf
+*.bat            text eol=crlf

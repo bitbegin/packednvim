@@ -295,8 +295,9 @@ jobs:
           if out.exists():
               shutil.rmtree(out)
 
-          # 运行期需要的；catalog/ tools/ tests/ 是开发用的，不进包
-          INCLUDE = ['init.lua', 'lua', 'pack', 'bin', 'vendor', 'docs', 'README.md']
+          # 运行期需要的；catalog/ tools/ tests/ 是开发用的，不进包。
+          # nvim.cmd / nvim.sh 是启动脚本，缺了它们用户得自己设四个 XDG 变量，必须带上。
+          INCLUDE = ['init.lua', 'nvim.cmd', 'nvim.sh', 'lua', 'pack', 'bin', 'vendor', 'docs', 'README.md']
 
           for name in INCLUDE:
               src = root / name
