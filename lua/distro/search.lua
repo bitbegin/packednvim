@@ -127,15 +127,15 @@ function M.run(args, title, opts)
     vim.notify('无匹配', vim.log.levels.INFO)
     return
   end
-  -- 打开结果窗口时给一个稳定的高度。
+  -- 就用默认的 :copen。
   --
-  -- 默认的 :copen 会让窗口高度**贴合结果条数**：只有两三条结果时它就缩成 3 行，
-  -- 看起来像「窗口坏了」或「怎么只有这么点」。搜索结果常常只有几条，
-  -- 于是这个现象很常见。
-  -- 这里设一个下限：至少 12 行，最多 30 行（别把编辑区挤没了）。
-  -- 想临时改高度：在结果窗口里 :resize 20，或 <C-w> 之后按 + / -
-  local qf_height = math.max(12, math.min(#lines + 2, 30))
-  vim.cmd('copen ' .. qf_height)
+  -- 曾在这里改成「给一个稳定高度下限」，理由是我以为默认行为会让窗口贴合结果条数
+  -- （只有两三条结果就缩成三四行）。**实测推翻了那个假设**：
+  --   :copen     -> 高度 10 行（即使只有 2 条结果）
+  --   :copen 12  -> 高度 12 行
+  -- 既然默认已经是稳定的 10 行，强制更高只会在结果很少时白占屏幕，所以撤掉。
+  -- 临时改高度：在结果窗口里 :resize 20，或 <C-w> 后按 + / -
+  vim.cmd('copen')
 end
 
 local function prompt(msg, on_confirm)
