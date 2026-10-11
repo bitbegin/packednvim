@@ -44,6 +44,18 @@ return {
         -- 不设 cmd 也不会退回到「系统的 fd」：启动脚本已把 <发行版>/bin 前置进 PATH，
         -- 所以裸命令名 fd / rg 解析到的就是随包那份。
         -- fzf-lua 会在 fd / fdfind / rg / find 之间自动挑可用的，前两个都在包里。
+        -- 发行版自己的运行期状态不该出现在搜索结果里。
+        --
+        -- .local/ 下是会话、undo、以及与 vim.loader 的字节码缓存
+        -- （cache/luac/，文件名是 URI 编码后的路径，例如
+        --  D%3a%2flang%2f...%2flua%2fdistro%2fsearch.luac —— 那串看不懂的
+        --  %3a%2f 就是它）。从包目录里搜索时，这些东西会淹没真正的项目文件。
+        --
+        -- 用 file_ignore_patterns 而不是去覆盖 fd_opts / rg_opts：
+        -- 后者是**替换**语义，会连带丢掉默认值里的其它排除项（我在这上面栽过一次）。
+        -- 这个选项是**追加**语义，对 fd 与 rg 两条路都生效。
+        file_ignore_patterns = { '^%.local/' },
+
         winopts = {
           height = 0.85,
           width = 0.85,
@@ -129,7 +141,7 @@ return {
         engines = {
           ripgrep = {
             path = 'rg',
-            extraArgs = { '--hidden', '--glob=!.git/*' },
+            extraArgs = { '--hidden', '--glob=!.git/*', '--glob=!.local/*' },
           },
         },
         border = 'rounded',

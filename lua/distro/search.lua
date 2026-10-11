@@ -24,6 +24,11 @@ local RG_OPTS = {
   '--smart-case',
   '--hidden',
   '--glob=!.git/*',
+  -- 发行版自己的运行期状态（会话、undo、缓存）在包内 .local/ 下，
+  -- 而 vim.loader 的字节码缓存也写在那里（cache/luac/，文件名是 URI 编码的路径）。
+  -- 不排除的话，从包目录里搜索会满屏都是自己的缓存与日志 ——
+  -- 看起来像「搜错了地方」，实际是搜索把发行版的内部状态当成了项目文件。
+  '--glob=!.local/*',
   '--max-columns=300', -- 日志里一行几 MB 是常态，不限制会把 quickfix 拖垮
   '--max-columns-preview',
 }
