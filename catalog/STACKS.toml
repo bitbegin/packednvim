@@ -1,0 +1,286 @@
+# 三套已决策的插件方案
+#
+# 这是「七步决策」的落地结果：每个互斥格只留一个赢家，停更项与联网项全部剔除。
+# 逐格的取舍理由见 ../docs/DECIDED.md，决策顺序本身见 ../docs/CHOOSING.md。
+#
+# 用法：
+#   python tools/parse_selection.py --stack minimal     --apply
+#   python tools/parse_selection.py --stack recommended --apply
+#   python tools/parse_selection.py --stack full        --apply
+#
+# --apply 会把勾选状态**完全重写**成该方案的清单（不在清单里的一律取消勾选），
+# 所以切换方案就是一条命令，不用手工收拾。
+#
+# 关键一点：nvim-mini/mini.nvim 的 45+ 个模块共用一个仓库，
+# 所以列再多 mini 模块都只算 **1 个仓库**、只占一份 vendor 体积。
+
+[minimal]
+desc = "极简：mini 模块为骨干，除 rg/fzf 外不依赖任何外部工具。启动最快、行为最可预测。"
+plugins = [
+  # --- mini.nvim 模块（同一个仓库）---
+  "nvim-mini/mini.nvim#mini.icons",
+  "nvim-mini/mini.nvim#mini.statusline",
+  "nvim-mini/mini.nvim#mini.tabline",
+  "nvim-mini/mini.nvim#mini.starter",
+  "nvim-mini/mini.nvim#mini.clue",
+  "nvim-mini/mini.nvim#mini.notify",
+  "nvim-mini/mini.nvim#mini.sessions",
+  "nvim-mini/mini.nvim#mini.visits",
+  "nvim-mini/mini.nvim#mini.ai",
+  "nvim-mini/mini.nvim#mini.surround",
+  "nvim-mini/mini.nvim#mini.pairs",
+  "nvim-mini/mini.nvim#mini.comment",
+  "nvim-mini/mini.nvim#mini.bracketed",
+  "nvim-mini/mini.nvim#mini.move",
+  "nvim-mini/mini.nvim#mini.operators",
+  "nvim-mini/mini.nvim#mini.indentscope",
+  "nvim-mini/mini.nvim#mini.hipatterns",
+  "nvim-mini/mini.nvim#mini.trailspace",
+  "nvim-mini/mini.nvim#mini.bufremove",
+  "nvim-mini/mini.nvim#mini.cursorword",
+  "nvim-mini/mini.nvim#mini.align",
+  "nvim-mini/mini.nvim#mini.splitjoin",
+  # --- 主题：留几个候选，随时切换（都是纯 Lua，不加运行成本）---
+  "folke/tokyonight.nvim",        # 默认
+  "catppuccin/nvim",
+  "rebelot/kanagawa.nvim",
+  "sainnhe/gruvbox-material",
+  "EdenEast/nightfox.nvim",
+  "rose-pine/neovim",
+  # --- 搜索（需求 4/5）---
+  "ibhagwan/fzf-lua",
+  "folke/flash.nvim",
+  # --- 语法 ---
+  "nvim-treesitter/nvim-treesitter",
+  "nvim-treesitter/nvim-treesitter-textobjects",
+  # --- LSP ---
+  "neovim/nvim-lspconfig",
+  "folke/lazydev.nvim",
+  "j-hui/fidget.nvim",
+  # --- 补全与片段 ---
+  "saghen/blink.cmp",
+  "L3MON4D3/LuaSnip",
+  "rafamadriz/friendly-snippets",
+  # --- 格式化与检查 ---
+  "stevearc/conform.nvim",
+  "mfussenegger/nvim-lint",
+  # --- Git 与诊断 ---
+  "lewis6991/gitsigns.nvim",
+  "folke/trouble.nvim",
+  # --- 文件操作 ---
+  "stevearc/oil.nvim",
+  # --- 中文输入 ---
+  "keaising/im-select.nvim",
+  # --- 公共依赖 ---
+  "nvim-lua/plenary.nvim",
+]
+
+[recommended]
+desc = "推荐：把体验件换成专精实现，LSP / 格式化 / 诊断链路补齐。日常主力方案。"
+plugins = [
+  # --- mini.nvim 模块（同一个仓库；与 minimal 的差异在下面注释里）---
+  "nvim-mini/mini.nvim#mini.tabline",     # 状态栏与键位提示改用专精实现，故不含 mini.statusline / mini.clue
+  "nvim-mini/mini.nvim#mini.starter",
+  "nvim-mini/mini.nvim#mini.notify",
+  "nvim-mini/mini.nvim#mini.sessions",
+  "nvim-mini/mini.nvim#mini.visits",
+  "nvim-mini/mini.nvim#mini.ai",
+  "nvim-mini/mini.nvim#mini.surround",
+  "nvim-mini/mini.nvim#mini.pairs",
+  "nvim-mini/mini.nvim#mini.comment",
+  "nvim-mini/mini.nvim#mini.bracketed",
+  "nvim-mini/mini.nvim#mini.move",
+  "nvim-mini/mini.nvim#mini.operators",
+  "nvim-mini/mini.nvim#mini.indentscope",
+  "nvim-mini/mini.nvim#mini.hipatterns",
+  "nvim-mini/mini.nvim#mini.trailspace",
+  "nvim-mini/mini.nvim#mini.bufremove",
+  "nvim-mini/mini.nvim#mini.cursorword",
+  "nvim-mini/mini.nvim#mini.align",
+  "nvim-mini/mini.nvim#mini.splitjoin",
+  # --- 主题：留几个候选，随时切换（都是纯 Lua，不加运行成本）---
+  "folke/tokyonight.nvim",        # 默认
+  "catppuccin/nvim",
+  "rebelot/kanagawa.nvim",
+  "sainnhe/gruvbox-material",
+  "EdenEast/nightfox.nvim",
+  "rose-pine/neovim",
+  "nvim-lualine/lualine.nvim",
+  "nvim-tree/nvim-web-devicons",
+  "folke/which-key.nvim",
+  "j-hui/fidget.nvim",
+  "stevearc/dressing.nvim",
+  "mbbill/undotree",
+  "RRethy/vim-illuminate",
+  "NMAC427/guess-indent.nvim",
+  "tpope/vim-repeat",
+  "mrjones2014/smart-splits.nvim",
+  "dstein64/vim-startuptime",
+  # --- 搜索与跳转 ---
+  "ibhagwan/fzf-lua",
+  "folke/flash.nvim",
+  "chrisgrieser/nvim-spider",
+  "MagicDuck/grug-far.nvim",
+  # --- 语法 ---
+  "nvim-treesitter/nvim-treesitter",
+  "nvim-treesitter/nvim-treesitter-textobjects",
+  "nvim-treesitter/nvim-treesitter-context",
+  "folke/ts-comments.nvim",
+  # --- LSP ---
+  "neovim/nvim-lspconfig",
+  "folke/lazydev.nvim",
+  "ray-x/lsp_signature.nvim",
+  "antosha417/nvim-lsp-file-operations",
+  # --- 补全与片段 ---
+  "saghen/blink.cmp",
+  "L3MON4D3/LuaSnip",
+  "rafamadriz/friendly-snippets",
+  # --- 格式化与检查 ---
+  "stevearc/conform.nvim",
+  "mfussenegger/nvim-lint",
+  # --- Git ---
+  "lewis6991/gitsigns.nvim",
+  "NeogitOrg/neogit",
+  "sindrets/diffview.nvim",
+  # --- 诊断与文件操作 ---
+  "folke/trouble.nvim",
+  "stevearc/oil.nvim",
+  # --- 写作 ---
+  "MeanderingProgrammer/render-markdown.nvim",
+  "folke/todo-comments.nvim",
+  # --- 中文 ---
+  "keaising/im-select.nvim",
+  "kkew3/jieba.vim",
+  # --- 公共依赖 ---
+  "nvim-lua/plenary.nvim",
+]
+
+[full]
+desc = "全功能：在推荐方案上追加调试、测试、数据库、HTTP、笔记等整套 IDE 能力。仓库数约翻倍。"
+plugins = [
+  # --- mini.nvim 模块 ---
+  "nvim-mini/mini.nvim#mini.tabline",
+  "nvim-mini/mini.nvim#mini.starter",
+  "nvim-mini/mini.nvim#mini.notify",
+  "nvim-mini/mini.nvim#mini.sessions",
+  "nvim-mini/mini.nvim#mini.visits",
+  "nvim-mini/mini.nvim#mini.ai",
+  "nvim-mini/mini.nvim#mini.surround",
+  "nvim-mini/mini.nvim#mini.pairs",
+  "nvim-mini/mini.nvim#mini.comment",
+  "nvim-mini/mini.nvim#mini.bracketed",
+  "nvim-mini/mini.nvim#mini.move",
+  "nvim-mini/mini.nvim#mini.operators",
+  "nvim-mini/mini.nvim#mini.indentscope",
+  "nvim-mini/mini.nvim#mini.hipatterns",
+  "nvim-mini/mini.nvim#mini.trailspace",
+  "nvim-mini/mini.nvim#mini.bufremove",
+  "nvim-mini/mini.nvim#mini.cursorword",
+  "nvim-mini/mini.nvim#mini.align",
+  "nvim-mini/mini.nvim#mini.splitjoin",
+  "nvim-mini/mini.nvim#mini.extra",
+  "nvim-mini/mini.nvim#mini.git",
+  # --- 主题：留几个候选，随时切换（都是纯 Lua，不加运行成本）---
+  "folke/tokyonight.nvim",        # 默认
+  "catppuccin/nvim",
+  "rebelot/kanagawa.nvim",
+  "sainnhe/gruvbox-material",
+  "EdenEast/nightfox.nvim",
+  "rose-pine/neovim",
+  "nvim-lualine/lualine.nvim",
+  "nvim-tree/nvim-web-devicons",
+  "folke/which-key.nvim",
+  "j-hui/fidget.nvim",
+  "mbbill/undotree",
+  "RRethy/vim-illuminate",
+  "NMAC427/guess-indent.nvim",
+  "tpope/vim-repeat",
+  "mrjones2014/smart-splits.nvim",
+  "dstein64/vim-startuptime",
+  "folke/noice.nvim",
+  "MunifTanjim/nui.nvim",
+  "Bekaboo/dropbar.nvim",
+  "luukvbaal/statuscol.nvim",
+  "folke/zen-mode.nvim",
+  "folke/twilight.nvim",
+  "folke/edgy.nvim",
+  "karb94/neoscroll.nvim",
+  "kevinhwang91/nvim-ufo",
+  # --- 搜索与跳转 ---
+  "ibhagwan/fzf-lua",
+  "folke/flash.nvim",
+  "chrisgrieser/nvim-spider",
+  "MagicDuck/grug-far.nvim",
+  # --- 语法 ---
+  "nvim-treesitter/nvim-treesitter",
+  "nvim-treesitter/nvim-treesitter-textobjects",
+  "nvim-treesitter/nvim-treesitter-context",
+  "folke/ts-comments.nvim",
+  "Wansmer/treesj",
+  # --- LSP ---
+  "neovim/nvim-lspconfig",
+  "folke/lazydev.nvim",
+  "ray-x/lsp_signature.nvim",
+  "antosha417/nvim-lsp-file-operations",
+  "stevearc/aerial.nvim",
+  "aznhe21/actions-preview.nvim",
+  # --- 补全与片段 ---
+  "saghen/blink.cmp",
+  "L3MON4D3/LuaSnip",
+  "rafamadriz/friendly-snippets",
+  # --- 格式化与检查 ---
+  "stevearc/conform.nvim",
+  "mfussenegger/nvim-lint",
+  # --- Git ---
+  "lewis6991/gitsigns.nvim",
+  "NeogitOrg/neogit",
+  "sindrets/diffview.nvim",
+  "FabijanZulj/blame.nvim",
+  # --- 诊断与文件操作 ---
+  "folke/trouble.nvim",
+  "nvim-neo-tree/neo-tree.nvim",
+  "chrisgrieser/nvim-genghis",
+  "chentoast/marks.nvim",
+  # --- 编辑增强 ---
+  "gbprod/yanky.nvim",
+  "godlygeek/tabular",
+  # --- 终端与任务 ---
+  "stevearc/overseer.nvim",
+  "CRAG666/code_runner.nvim",
+  "chomosuke/term-edit.nvim",
+  "folke/neoconf.nvim",
+  # --- 调试 ---
+  "mfussenegger/nvim-dap",
+  "rcarriga/nvim-dap-ui",
+  "nvim-neotest/nvim-nio",
+  "theHamsta/nvim-dap-virtual-text",
+  "mfussenegger/nvim-dap-python",
+  "leoluz/nvim-dap-go",
+  "mrcjkb/rustaceanvim",
+  # --- 测试 ---
+  "nvim-neotest/neotest",
+  "nvim-neotest/neotest-python",
+  "nvim-neotest/neotest-go",
+  "nvim-neotest/neotest-plenary",
+  "andythigpen/nvim-coverage",
+  # --- 数据库与 HTTP ---
+  "tpope/vim-dadbod",
+  "kristijanhusak/vim-dadbod-ui",
+  "kristijanhusak/vim-dadbod-completion",
+  "mistweaverco/kulala.nvim",
+  # --- 写作与笔记 ---
+  "MeanderingProgrammer/render-markdown.nvim",
+  "folke/todo-comments.nvim",
+  "dhruvasagar/vim-table-mode",
+  "nvim-orgmode/orgmode",
+  "obsidian-nvim/obsidian.nvim",
+  "iamcco/markdown-preview.nvim",
+  # --- 中文 ---
+  "keaising/im-select.nvim",
+  "kkew3/jieba.vim",
+  # --- 其它 ---
+  "numToStr/Navigator.nvim",
+  "jbyuki/one-small-step-for-vimkind",
+  # --- 公共依赖 ---
+  "nvim-lua/plenary.nvim",
+]

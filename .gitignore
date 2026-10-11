@@ -1,0 +1,21 @@
+# 构建产物，不进版本库。
+# pack/ 由 tools/vendor.ps1 按 vendor/lock.json 复现 ——
+# 注意 vendor/lock.json 本身要提交，它是「可复现」的凭证。
+build/
+pack/
+
+# 打包产物
+dist.zip
+dist.tar.gz
+
+# 编辑器杂项
+*.swp
+.DS_Store
+
+# nvim 写日志失败时会落在当前目录
+nvim.log
+.nvimlog
+
+# Python 字节码缓存
+__pycache__/
+*.pyc

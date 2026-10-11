@@ -1,0 +1,14 @@
+# 这是跨平台项目（Linux + Windows 都要跑），所以仓库内统一存 LF。
+# 规则自上而下，后面的覆盖前面的，因此下面针对 bin/ 与 *.sh 的特例优先。
+*                text=auto eol=lf
+
+# bin/ 里放的是可执行文件，其中 Linux 那份是 ELF 二进制。
+# 必须禁止换行转换（-text），否则 git 会把 LF 改成 CRLF，直接改坏 Linux 的二进制。
+bin/*            -text -diff
+bin/*.md         text
+bin/*.json       text
+bin/licenses/**  text
+
+# 必须在 Linux 上原样运行的脚本：强制 LF。
+# 不然某天在 Windows 上编辑后存成 CRLF，shebang 会带上 \r 而直接执行失败。
+*.sh             text eol=lf
