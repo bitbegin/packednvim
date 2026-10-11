@@ -83,8 +83,15 @@ opt.laststatus = 3             -- 全局状态栏
 opt.splitright = true
 opt.splitbelow = true
 opt.list = true
-opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
-opt.fillchars = { eob = ' ', fold = ' ', foldopen = '▾', foldclose = '▸' }
+-- listchars 这里有个真实的坑：`ambiwidth=double` 会把**东亚「歧义宽度」字符**
+-- （`·` U+00B7、`␣` U+2423、`»` U+00BB 都是）当成 2 格宽，而 listchars 要求
+-- 这些字段必须是 1 格 —— 于是直接报 E1512 并且**整份 options 都不会生效**。
+--
+-- 所以这里用 ASCII：它永远窄，不受 ambiwidth 影响。
+-- 想要好看字形的话，得在「CJK 宽度正确」和「漂亮的 listchars」之间取舍 ——
+-- 对本发行版的目标用户（中文），前者更重要，所以选 ASCII 并在此写明原因。
+opt.listchars = { tab = '> ', trail = '-', nbsp = '+' }
+opt.fillchars = { eob = ' ', fold = ' ', foldopen = '-', foldclose = '+' }
 opt.pumheight = 12             -- 补全菜单最多 12 行，别挡住半个屏幕
 opt.winminwidth = 5
 opt.timeoutlen = 400           -- 等 which-key 弹出与组合键的超时

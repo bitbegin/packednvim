@@ -3,11 +3,11 @@
 > 本文件由 `tools/parse_selection.py --overview` 从 `PLUGIN-CATALOG.md` 自动生成，**别手工编辑**。
 > 每条的作用说明、取舍理由、许可与风险备注在 `PLUGIN-CATALOG.md`；怎么选见 `../docs/CHOOSING.md`。
 
-共 **207** 个条目，分 **24** 类。
+共 **206** 个条目，分 **24** 类。
 
-- 依赖分级：外部工具 30、纯 Lua 163、编译/下载 6、联网 8
-- 档位分布：core 51、extra 91、ide 65
-- 分类条目数：A. 基础库 · 图标 8、B. 配色主题 19、C. 状态栏 · 标签栏 · 面包屑 10、D. 启动页 3、E. 文件浏览与模糊查找 8、F. 补全 · 代码片段 15、G. LSP 与语言服务 12、H. Tree-sitter 5、I. 格式化 2、J. 静态检查 1、K. 诊断与问题面板 4、L. Git 集成 9、M. 编辑增强 41、N. 会话 · 项目 · 工作区 7、O. 通知 · 命令行 · UI 润色 5、P. 快捷键提示 3、Q. 终端 · 任务 · 数据库 · HTTP 12、R. 调试（DAP） 7、S. 测试 6、T. 标记语言 · 写作 · 笔记 7、U. 中文 / CJK 5、V. AI 助手（默认排除） 5、W. 性能 · 大文件 · 启动分析 4、X. 其它实用小件与备选方案 9
+- 依赖分级：外部工具 30、纯 Lua 163、编译/下载 5、联网 8
+- 档位分布：core 50、extra 91、ide 65
+- 分类条目数：A. 基础库 · 图标 8、B. 配色主题 19、C. 状态栏 · 标签栏 · 面包屑 10、D. 启动页 3、E. 文件浏览与模糊查找 8、F. 补全 · 代码片段 14、G. LSP 与语言服务 12、H. Tree-sitter 5、I. 格式化 2、J. 静态检查 1、K. 诊断与问题面板 4、L. Git 集成 9、M. 编辑增强 41、N. 会话 · 项目 · 工作区 7、O. 通知 · 命令行 · UI 润色 5、P. 快捷键提示 3、Q. 终端 · 任务 · 数据库 · HTTP 12、R. 调试（DAP） 7、S. 测试 6、T. 标记语言 · 写作 · 笔记 7、U. 中文 / CJK 5、V. AI 助手（默认排除） 5、W. 性能 · 大文件 · 启动分析 4、X. 其它实用小件与备选方案 9
 
 ☐ 未勾选 / ☑ 已勾选。
 
@@ -97,9 +97,7 @@
 | | 插件 | 作用 | 依赖 | 档位 |
 | --- | --- | --- | --- | --- |
 | ☑ | `saghen/blink.cmp` | 高性能补全引擎，当前主流选择 | 编译/下载 | core |
-| | | ↳ **v2 起必须搭配 `saghen/blink.lib`**，缺了会直接加载失败；原生模糊匹配库由 blink.lib 按平台取 | | |
-| ☐ | `saghen/blink.lib` | blink.* 系列插件的外部共享库 —— blink.cmp v2 的硬依赖 | 编译/下载 | core |
-| | | ↳ **不是可选项**；仓库本体只有 Lua 代码，原生库按平台单独取 | | |
+| | | ↳ **钉在 tag `v1.10.2`**（最新正式发布版）。main 上的 v2 尚未发布，且额外依赖 `saghen/blink.lib`；v1 有官方分平台原生库与 sha256，更适合发行版 | | |
 | ☑ | `L3MON4D3/LuaSnip` | 片段引擎，兼容 VSCode 与 LSP 片段格式 | 纯 Lua | core |
 | | | ↳ `jsregexp` 为可选的 C 加速库，缺失时自动降级 | | |
 | ☑ | `rafamadriz/friendly-snippets` | 覆盖大量语言的现成片段集合 | 纯 Lua | core |
@@ -204,7 +202,8 @@
 | ☑ | `tpope/vim-repeat` | 让插件的操作也能用 `.` 重复 | 纯 Lua | core |
 | ☐ | `kylechui/nvim-surround` | 另一套环绕操作，键位贴合原 vim-surround | 纯 Lua | ide |
 | ☐ | `windwp/nvim-autopairs` | 自动配对，规则可编程 | 纯 Lua | ide |
-| ☑ | `chrisgrieser/nvim-spider` | 更符合直觉的 w / e / b 词移动 | 纯 Lua | ide |
+| ☐ | `chrisgrieser/nvim-spider` | 更符合直觉的 w / e / b 词移动（擅长 camelCase / snake_case） | 纯 Lua | ide |
+| | | ↳ **与 `jieba.vim` 键位冲突，已从方案中移除**：它没有任何关闭默认键位的选项，必然接管 w/e/b/ge/gg；中文分词是本发行版的差异点，所以让 jieba 胜出。看重 camelCase 的用户可自行启用它并放弃 jieba 的键位 | | |
 | ☐ | `Wansmer/treesj` | 按语法树拆分与合并代码块 | 纯 Lua | ide |
 | ☑ | `mbbill/undotree` | 撤销树可视化 | 纯 Lua | ide |
 | ☐ | `kevinhwang91/nvim-ufo` | 现代化折叠，基于 LSP 与语法树 | 纯 Lua | ide |

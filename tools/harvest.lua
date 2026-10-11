@@ -50,11 +50,49 @@ local PARSERS = {
   'regex', 'comment', 'printf', 'cmake', 'make',
 }
 
+local parser_dir = data .. '/site/parser'
+
+--- 等解析器真正落盘。
+--
+-- 关键：**nvim-treesitter 的 install() 是异步的**（内部用他自己的 async 协程，
+-- 见 install.lua 里 `M.install = a.async(...)`）。调用后立刻返回，
+-- 下载与编译在后台推进 —— 第一次 CI 就是因为我按同步逻辑写、
+-- 采集时目录还空着而失败：日志里「Downloading tree-sitter-…」出现在断言之后，
+-- 正是异步在断言之后才跑起来的证据。
+--
+-- vim.wait 会推进事件循环，那些协程才能继续跑。
+-- 结束条件取三者之一：达到目标数量 / 连续 15 秒没有新产出 / 到达总时限。
+local function wait_for_parsers(target, max_ms)
+  local start = vim.uv.now()
+  local last_n, last_change = -1, vim.uv.now()
+  while vim.uv.now() - start < max_ms do
+    vim.wait(500)
+    local n = #vim.fn.glob(parser_dir .. '/*', false, true)
+    if n >= target then return n end
+    if n ~= last_n then
+      last_n, last_change = n, vim.uv.now()
+      log(('  解析器进度 %d/%d'):format(n, target))
+    elseif vim.uv.now() - last_change > 15000 then
+      log(('  连续 15 秒无新产出，认为已停止（%d/%d）'):format(n, target))
+      break
+    end
+  end
+  return #vim.fn.glob(parser_dir .. '/*', false, true)
+end
+
 local ok_ts, ts = pcall(require, 'nvim-treesitter')
 if ok_ts then
-  log(('安装 %d 个 tree-sitter 解析器（需要 tree-sitter CLI + C 编译器）'):format(#PARSERS))
-  local ok, err = pcall(function() ts.install(PARSERS) end)
-  if not ok then log('tree-sitter 安装失败：' .. tostring(err)) end
+  local already = #vim.fn.glob(parser_dir .. '/*', false, true)
+  log(('安装 %d 个 tree-sitter 解析器（需要 tree-sitter CLI + C 编译器；已有 %d 个）')
+    :format(#PARSERS, already))
+
+  local call_ok, err = pcall(function() ts.install(PARSERS) end)
+  if not call_ok then
+    log('调用 tree-sitter 安装失败：' .. tostring(err))
+  else
+    local n = wait_for_parsers(already + #PARSERS, 25 * 60 * 1000)
+    log(('解析器就位 %d 个（目标 %d）'):format(n, already + #PARSERS))
+  end
 else
   log('require("nvim-treesitter") 失败 —— 插件没在 runtimepath 上？')
 end

@@ -191,7 +191,8 @@
 - [x] **tpope/vim-repeat** · 作用：让插件的操作也能用 `.` 重复 · 依赖：纯 Lua · 档位：core · 许可：Vim license
 - [ ] **kylechui/nvim-surround** · 作用：另一套环绕操作，键位贴合原 vim-surround · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **windwp/nvim-autopairs** · 作用：自动配对，规则可编程 · 依赖：纯 Lua · 档位：ide · 许可：MIT
-- [x] **chrisgrieser/nvim-spider** · 作用：更符合直觉的 w / e / b 词移动 · 依赖：纯 Lua · 档位：ide · 许可：MIT
+- [ ] **chrisgrieser/nvim-spider** · 作用：更符合直觉的 w / e / b 词移动（擅长 camelCase / snake_case）· 依赖：纯 Lua · 档位：ide · 许可：MIT · 备注：**与 `jieba.vim` 键位冲突，已从方案中移除**：它没有任何关闭默认键位的选项，必然接管 w/e/b/ge/gg；中文分词是本发行版的差异点，所以让 jieba 胜出。看重 camelCase 的用户可自行启用它并放弃 jieba 的键位
+
 - [ ] **Wansmer/treesj** · 作用：按语法树拆分与合并代码块 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [x] **mbbill/undotree** · 作用：撤销树可视化 · 依赖：纯 Lua · 档位：ide · 许可：GPL-2.0
 - [ ] **kevinhwang91/nvim-ufo** · 作用：现代化折叠，基于 LSP 与语法树 · 依赖：纯 Lua · 档位：ide · 许可：MIT

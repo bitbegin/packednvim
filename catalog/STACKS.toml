@@ -119,7 +119,6 @@ plugins = [
   # --- 搜索与跳转 ---
   "ibhagwan/fzf-lua",
   "folke/flash.nvim",
-  "chrisgrieser/nvim-spider",
   "MagicDuck/grug-far.nvim",
   # --- 语法 ---
   "nvim-treesitter/nvim-treesitter",
@@ -209,7 +208,6 @@ plugins = [
   # --- 搜索与跳转 ---
   "ibhagwan/fzf-lua",
   "folke/flash.nvim",
-  "chrisgrieser/nvim-spider",
   "MagicDuck/grug-far.nvim",
   # --- 语法 ---
   "nvim-treesitter/nvim-treesitter",
