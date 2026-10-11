@@ -137,7 +137,9 @@ jobs:
           $zip = Join-Path $env:RUNNER_TEMP 'ts.zip'
           Invoke-WebRequest -Uri "https://github.com/tree-sitter/tree-sitter/releases/download/$ver/$asset" -OutFile $zip
           Expand-Archive -Path $zip -DestinationPath $dir -Force
-          & chmod +x (Join-Path $dir 'tree-sitter') 2>$null
+          # 必须加平台判断：Windows 上没有 chmod，而 $ErrorActionPreference='Stop'
+          # 会把「命令不存在」升级成终止错误，直接让 Windows 构建失败。
+          if (-not $IsWindows) { & chmod +x (Join-Path $dir 'tree-sitter') }
           $dir | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
       # Windows 上编译解析器需要 MSVC 的 C 编译器在 PATH 上。

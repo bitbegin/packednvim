@@ -102,16 +102,14 @@ function Get-Specs {
     return $s
 }
 
-function Invoke-Curl {
-    param([string[]]$CurlArgs)
-    $exe = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
-    if (-not $exe) { $exe = 'curl' }
-    & $exe @CurlArgs
-    return $LASTEXITCODE
-}
+# curl 的可执行名在各平台不同：Windows 是 curl.exe，Linux/macOS 是 curl。
+# 直接写 `& curl.exe` 会在 Linux/macOS runner 上以「找不到 curl.exe」失败。
+$Curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
+if (-not $Curl) { $Curl = (Get-Command curl -ErrorAction SilentlyContinue).Source }
+if (-not $Curl) { throw '找不到 curl' }
 
-$proxyArgs = @()
-if ($Proxy) { $proxyArgs = @('--proxy', $Proxy) }
+# -Proxy 是**URL 前缀式**代理（如 https://ghfast.top/ ），不是 HTTP CONNECT 代理。
+# 所以只对下载地址加前缀，不传 curl 的 --proxy —— 两者混用会套两层。
 
 # ---------------------------------------------------------------------------
 Write-Host ("=== 取工具：{0} ===" -f $Platform) -ForegroundColor Cyan
@@ -125,10 +123,9 @@ $relCache = @{}
 foreach ($spec in Get-Specs -P $Platform) {
     Write-Host ("`n-- {0}" -f $spec.Tool) -ForegroundColor Cyan
 
-    # 同一个仓库多个平台共用，每个仓库只查一次 API
+    # 同一个仓库多个平台共用，每个仓库只查一次 API（不加代理，runner 直连很快）
     if (-not $relCache.ContainsKey($spec.Repo)) {
-        $apiArgs = @('-sSL', '--max-time', '120') + $proxyArgs
-        $raw = & curl.exe @apiArgs "https://api.github.com/repos/$($spec.Repo)/releases/latest" 2>$null
+        $raw = & $Curl -sSL --max-time 120 "https://api.github.com/repos/$($spec.Repo)/releases/latest" 2>$null
         if ($LASTEXITCODE -ne 0 -or -not $raw) {
             $missing += [pscustomobject]@{ tool=$spec.Tool; reason='查询 releases 失败'; pattern=$spec.Pattern }
             Write-Host '   查询失败，跳过' -ForegroundColor Yellow
@@ -155,9 +152,10 @@ foreach ($spec in Get-Specs -P $Platform) {
 
     $ok = $false
     foreach ($attempt in 1..4) {
-        # -C - 断点续传：这个网络环境会中途断流
-        $code = Invoke-Curl (@('-L', '-sS', '-C', '-', '--retry', '3', '--retry-delay', '2',
-            '--max-time', '900', '-o', $raw_file, $url) + $proxyArgs)
+        # -C - 断点续传：网络环境会中途断流
+        & $Curl @('-L', '-sS', '-C', '-', '--retry', '3', '--retry-delay', '2',
+            '--max-time', '900', '-o', $raw_file, $url)
+        $code = $LASTEXITCODE
         if ($code -eq 0 -and (Test-Path $raw_file) -and (Get-Item $raw_file).Length -eq $asset.size) { $ok = $true; break }
         Write-Host ("   第 {0} 次未完成（退出码 {1}）" -f $attempt, $code) -ForegroundColor Yellow
         Start-Sleep -Seconds 3

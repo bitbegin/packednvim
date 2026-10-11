@@ -65,20 +65,20 @@ $ASSETS = @{
 $assetName = $ASSETS[$Platform]
 if (-not $assetName) { throw "未知平台：$Platform" }
 
-function Invoke-Curl {
-    param([string[]]$Args)
-    $exe = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
-    if (-not $exe) { $exe = 'curl' }
-    & $exe @Args
-    return $LASTEXITCODE
-}
+# curl 的可执行名在各平台不同：Windows 上是 curl.exe，Linux/macOS 上是 curl。
+# **不能在脚本里直接写 `& curl.exe`** —— 那会在 Linux runner 上以
+# 「找不到 curl.exe」失败。第一次跑 arm64 构建时撞到的就是这个。
+$Curl = (Get-Command curl.exe -ErrorAction SilentlyContinue).Source
+if (-not $Curl) { $Curl = (Get-Command curl -ErrorAction SilentlyContinue).Source }
+if (-not $Curl) { throw '找不到 curl —— 取运行时与工具都依赖它' }
 
+# 查 API 不加代理：GitHub 托管的 runner 直连很快，代理是给本地慢网络用的。
 $apiArgs = @('-sS', '--max-time', '120')
-if ($Proxy) { $apiArgs = @('--proxy', $Proxy) + $apiArgs }
 
 Write-Host "=== 1. 查询 Neovim 发布信息（$Tag）===" -ForegroundColor Cyan
-$raw = & curl.exe @apiArgs -sSL "https://api.github.com/repos/neovim/neovim/releases/tags/$Tag" 2>$null
-if ($LASTEXITCODE -ne 0 -or -not $raw) { throw "取不到 Neovim $Tag 的发布信息（可能是代理或限流）" }
+Write-Host ("  curl: {0}" -f $Curl)
+$raw = & $Curl @apiArgs -sSL "https://api.github.com/repos/neovim/neovim/releases/tags/$Tag" 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $raw) { throw "取不到 Neovim $Tag 的发布信息（可能是限流）" }
 $release = $raw | ConvertFrom-Json
 
 $asset = $release.assets | Where-Object { $_.name -eq $assetName } | Select-Object -First 1
@@ -106,15 +106,18 @@ New-Item -ItemType Directory -Force -Path $dlDir | Out-Null
 $archive = Join-Path $dlDir $asset.name
 
 $url = $asset.browser_download_url
+# -Proxy 是**URL 前缀式**代理（如 https://ghfast.top/ ），不是 HTTP CONNECT 代理，
+# 所以是给 URL 加前缀，而不是传 curl 的 --proxy。两者混用会套两层。
 if ($Proxy) { $url = $Proxy + $url }
 
 $ok = $false
 foreach ($attempt in 1..5) {
     Write-Host ("  第 {0} 次尝试" -f $attempt)
-    # -C - 断点续传：这个网络环境经常中途断流，直连速度也可能骤降
-    $code = Invoke-Curl (@('-L', '-sS', '-C', '-', '--retry', '3', '--retry-delay', '2',
+    # -C - 断点续传：网络环境经常中途断流，直连速度也可能骤降
+    & $Curl @('-L', '-sS', '-C', '-', '--retry', '3', '--retry-delay', '2',
         '--speed-limit', '2048', '--speed-time', '60', '--max-time', '1800',
-        '-o', $archive, $url))
+        '-o', $archive, $url)
+    $code = $LASTEXITCODE
     if ($code -eq 0 -and (Test-Path $archive) -and (Get-Item $archive).Length -eq $asset.size) { $ok = $true; break }
     Write-Host ("    未完成（退出码 {0}），重试" -f $code) -ForegroundColor Yellow
     Start-Sleep -Seconds 4
