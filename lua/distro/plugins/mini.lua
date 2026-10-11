@@ -77,6 +77,35 @@ return {
                 { name = '退出              q', action = 'qa', section = '帮助' },
               },
             }
+
+            -- 打开真实文件后让启动页自己消失，连它的窗口一起收掉。
+            --
+            -- 不做这一步的话，启动页会一直占着一个横向窗口：从搜索结果跳转之后
+            -- 屏幕上就成了「启动页 + 文件 + quickfix」三个横条，编辑区被压得很小。
+            -- 这是从实际使用里发现的，mini.starter 自身不会替你关。
+            --
+            -- 实现上刻意**不**用 User MiniStarterOpened 再嵌一层 BufEnter：
+            -- 那样要依赖 mini.starter 在事件里传了什么参数。直接在 BufEnter 里
+            -- 按 filetype 找启动页缓冲区，简单、不依赖对方实现，也好测。
+            vim.api.nvim_create_autocmd('BufEnter', {
+              group = vim.api.nvim_create_augroup('distro_starter_close', { clear = true }),
+              callback = function()
+                if vim.bo.filetype == 'ministarter' then return end
+                for _, b in ipairs(vim.api.nvim_list_bufs()) do
+                  if vim.api.nvim_buf_is_valid(b) and vim.bo[b].filetype == 'ministarter' then
+                    -- 先记下它所在的窗口：只删缓冲区会留一个空窗口，那和没删差不多
+                    local win = nil
+                    for _, w in ipairs(vim.api.nvim_list_wins()) do
+                      if vim.api.nvim_win_get_buf(w) == b then win = w end
+                    end
+                    pcall(vim.api.nvim_buf_delete, b, { force = true })
+                    if win and vim.api.nvim_win_is_valid(win) and #vim.api.nvim_list_wins() > 1 then
+                      pcall(vim.api.nvim_win_close, win, true)
+                    end
+                  end
+                end
+              end,
+            })
           elseif name == 'sessions' then
             -- 会话文件放在发行版自己的 state 目录，不污染 stdpath('state') 的其它内容。
             -- mini.sessions 不会替你建目录，所以这里先建好。
