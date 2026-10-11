@@ -73,15 +73,19 @@ end
 local target = before + #PARSERS
 local start = vim.uv.now()
 local last_n, last_change = -1, vim.uv.now()
+-- 判定「停止产出」的阈值要足够宽。曾经用 15 秒，结果在 macOS 上编译还没结束
+-- 就被判为停止 —— 日志里 "Compiling parser" 出现在失败信息之后，就是这个原因。
+-- 单个语法（如 cpp/yaml）编译超过 15 秒很正常，所以放宽到 5 分钟。
+local STALL_MS = 5 * 60 * 1000
 while vim.uv.now() - start < 25 * 60 * 1000 do
   vim.wait(500)
   local n = #vim.fn.glob(parser_dir .. '/*', false, true)
   if n >= target then break end
   if n ~= last_n then
     last_n, last_change = n, vim.uv.now()
-    log(('  进度 %d/%d'):format(n, target))
-  elseif vim.uv.now() - last_change > 15000 then
-    log(('  连续 15 秒无新产出，认为已停止（%d/%d）'):format(n, target))
+    log(('  进度 %d/%d（已等待 %ds）'):format(n, target, math.floor((vim.uv.now() - start) / 1000)))
+  elseif vim.uv.now() - last_change > STALL_MS then
+    log(('  连续 %d 秒无新产出，认为已停止（%d/%d）'):format(STALL_MS / 1000, n, target))
     break
   end
 end
@@ -123,14 +127,25 @@ for _, lang in ipairs(probe) do
   end
 end
 
--- 平台相关的插件产物（由 workflow 在本脚本之前准备好）
-local ext = jit.os:lower() == 'windows' and '.dll' or '.so'
-local blink_lib = distro .. '/pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy' .. ext
+-- 平台相关的插件产物（由 workflow 在本脚本之前准备好）。
+--
+-- 扩展名必须与**插件自己的加载器**一致，而不是与「共享库的常见叫法」一致：
+--   blink.cmp 的 get_lib_extension()：mac/osx -> .dylib，windows -> .dll，其余 .so
+--   jieba.vim  的 loader：windows -> .dll，其余（含 macOS）-> .so
+-- 曾经这里对三者统一用「windows ? .dll : .so」，于是 macOS 上把 .dylib 报成缺失 ——
+-- **断言写错比没有断言更糟**，它会指出一个并不存在的问题。
+local os_name = jit.os:lower()
+local blink_ext = (os_name == 'windows' and '.dll')
+  or ((os_name == 'osx' or os_name == 'mac') and '.dylib')
+  or '.so'
+local jieba_ext = os_name == 'windows' and '.dll' or '.so'
+
+local blink_lib = distro .. '/pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy' .. blink_ext
 if vim.uv.fs_stat(blink_lib) == nil then
   problems[#problems + 1] = 'blink.cmp 原生库缺失：' .. blink_lib
 end
 
-local jieba_lib = distro .. '/pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs' .. ext
+local jieba_lib = distro .. '/pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs' .. jieba_ext
 if vim.uv.fs_stat(jieba_lib) == nil then
   problems[#problems + 1] = 'jieba.vim cdylib 缺失：' .. jieba_lib
 end
@@ -138,6 +153,18 @@ end
 if #problems > 0 then
   io.write('\n[harvest] 产物不完整：\n')
   for _, p in ipairs(problems) do io.write('  - ' .. p .. '\n') end
+
+  -- 把 :messages 的尾部打出来。nvim-treesitter 把下载/编译的错误抛给它的 logger，
+  -- 不打印的话日志里只剩「解析器 0 个」，完全看不出为什么失败。
+  local msgs = vim.fn.execute('messages')
+  if msgs and #msgs > 0 then
+    local lines = vim.split(msgs, '\n')
+    local tail = {}
+    for i = math.max(1, #lines - 40), #lines do tail[#tail + 1] = lines[i] end
+    io.write('\n[harvest] :messages 尾部（用于定位解析器为何没产出）：\n')
+    for _, l in ipairs(tail) do io.write('  ' .. l .. '\n') end
+  end
+
   vim.cmd('cquit 1')
 end
 
