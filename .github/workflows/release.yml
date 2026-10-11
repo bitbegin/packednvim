@@ -79,23 +79,28 @@ jobs:
             runner: ubuntu-latest
             tools: linux-x64
             triple: x86_64-unknown-linux-gnu
+            ts_cli: tree-sitter-cli-linux-x64.zip
           - id: linux-arm64
             runner: ubuntu-24.04-arm
             tools: linux-arm64
             triple: aarch64-unknown-linux-gnu
+            ts_cli: tree-sitter-cli-linux-arm64.zip
           - id: win64
             runner: windows-latest
             tools: windows-x64
             triple: x86_64-pc-windows-msvc
+            ts_cli: tree-sitter-cli-windows-x64.zip
           - id: darwin-x64
             # Intel macOS runner 正在被逐步淘汰；不可用时改用 macos-15-intel，或删掉此项
             runner: macos-13
             tools: darwin-x64
             triple: x86_64-apple-darwin
+            ts_cli: tree-sitter-cli-macos-x64.zip
           - id: darwin-arm64
             runner: macos-14
             tools: darwin-arm64
             triple: aarch64-apple-darwin
+            ts_cli: tree-sitter-cli-macos-arm64.zip
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -131,16 +136,19 @@ jobs:
           & (Join-Path $bin $(if ($IsWindows) { 'nvim.exe' } else { 'nvim' })) --version | Select-Object -First 3
 
       # ---- tree-sitter CLI（编译解析器要用） ----------------------------
+      # **必须按架构取**。在 arm64 runner 上取 x64 的 CLI，内核会拒绝执行该文件，
+      # 而 sh 会兜底把它当脚本跑 —— 表现为刷屏的
+      #   tree-sitter: 1: cannot create ^A<90><83>P@...
+      #   tree-sitter: 14: Syntax error: "(" unexpected
+      # 完全看不出是架构不匹配。所以产物名在矩阵里显式写死，并在下面立刻验证。
       - name: 安装 tree-sitter CLI
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $ver = 'v0.27.1'
+          $asset = '${{ matrix.ts_cli }}'
           $dir = Join-Path $env:RUNNER_TEMP 'ts'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          $asset = if ($IsWindows) { 'tree-sitter-cli-windows-x64.zip' }
-                   elseif ($IsMacOS) { 'tree-sitter-cli-macos-x64.zip' }
-                   else { 'tree-sitter-cli-linux-x64.zip' }
           $zip = Join-Path $env:RUNNER_TEMP 'ts.zip'
           Invoke-WebRequest -Uri "https://github.com/tree-sitter/tree-sitter/releases/download/$ver/$asset" -OutFile $zip
           Expand-Archive -Path $zip -DestinationPath $dir -Force
@@ -148,6 +156,15 @@ jobs:
           # 会把「命令不存在」升级成终止错误，直接让 Windows 构建失败。
           if (-not $IsWindows) { & chmod +x (Join-Path $dir 'tree-sitter') }
           $dir | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+          # 立刻验一次能不能执行：架构错了要在这里明确报错，
+          # 而不是留到后面变成几百行看不懂的 shell 报错
+          $exe = Join-Path $dir $(if ($IsWindows) { 'tree-sitter.exe' } else { 'tree-sitter' })
+          $out = (& $exe --version 2>&1) -join ' '
+          if ($LASTEXITCODE -ne 0) {
+            throw "tree-sitter CLI 无法执行（架构与本机不匹配？）：$out"
+          }
+          Write-Host ("tree-sitter {0}  OK   ({1})" -f $out, $asset)
 
       # Windows 上编译解析器需要 MSVC 的 C 编译器在 PATH 上。
       # 这是第三方 action（供应链上要注意）—— 要更严格就把它钉到某个 commit SHA。
