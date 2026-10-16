@@ -91,14 +91,14 @@ python tools/check-stack.py                                   # 校验方案里�
 
 **已定：**
 
-1. **外部工具打进 `bin/`。** 已就位 7 个：`rg`、`fzf`、`fd`、`stylua`、`shfmt`、`shellcheck`、`im-select.exe`（版本与哈希见 [`bin/README.md`](bin/README.md)）。`ruff` 按决定移除。
+1. **外部工具由 CI 按平台现取。** 每个平台 6 个：`rg`、`fzf`、`fd`、`stylua`、`shfmt`、`shellcheck`；另有 `im-select.exe` —— 它是**唯一留在版本库里**的二进制，因为上游产物名不含平台信息、无法可靠匹配，而它只有约 200 KB 且只在 Windows 需要。**`bin/` 其余内容不进版本库**：6 个平台的二进制上百 MB，而 git 历史不会因为后来的删除而变小。`ruff` 按决定移除。
 2. **语言服务器暂不打包。** 由用户自行安装，发行版只探测、不报错，缺失项在 `:checkhealth distro` 汇总。
 3. **图标强依赖 Nerd Font。** 用户文档里必须写明要装，否则满屏方块。
 4. **搜索双击跳转**、**默认 picker 用 `fzf-lua`**（见 [`docs/SEARCH-WORKFLOW.md`](docs/SEARCH-WORKFLOW.md)）。
 5. **主心骨用 mini**（`snacks.nvim` 不选）。
 6. **保留 6 个主题**：`tokyonight`（默认）、`catppuccin`、`kanagawa`、`gruvbox-material`、`nightfox`、`rose-pine`。
-7. **方案选 `recommended`**：63 项 / 45 个仓库。
-8. **只打一个包**，内含 Windows 与 Linux 两套二进制。原「双 profile 出两个产物」与「按平台出包」两条设想都作废，`bin/` 的 102 MB 整体进包已明确接受。
+7. **方案选 `recommended`**：62 项 / 44 个插件。
+8. **每个平台一个包**，各自带该平台的 Neovim 本体、命令行工具、tree-sitter 解析器与插件原生库。原「只打一个包、内含两平台二进制」已作废 —— 那样每个包都要带一半用不到的东西。
 9. **两个许可待核项不用**：`nvim-tree/nvim-tree.lua`（API 报 NOASSERTION）与 `romgrk/barbar.nvim`（无 LICENSE 文件）已从目录删除，条目数 208 → 206。
 10. **不做 Python 工具链。**
 
