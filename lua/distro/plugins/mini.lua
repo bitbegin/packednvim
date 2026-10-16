@@ -51,6 +51,20 @@ return {
           if name == 'icons' then
             -- 已定：图标强依赖 Nerd Font（vim.g.have_nerd_font 在 options.lua 里设为 true）
             cfg = { use_filetype = true }
+          elseif name == 'animate' then
+            -- 关掉**光标移动**的动画，保留窗口/滚动那几个。
+            --
+            -- 原因来自实际使用反馈：默认开启的 cursor 动画会让「点击鼠标」变成
+            -- 光标从当前位置滑到点击处的效果。本意是好看，用起来却像卡顿或漂移
+            -- —— 尤其点击是高频操作，每次都滑一下很干扰。
+            -- scroll/resize/open/close 那几个不改变光标位置，留着无妨。
+            cfg = {
+              cursor = { enable = false },
+              scroll = { enable = true },
+              resize = { enable = true },
+              open = { enable = true },
+              close = { enable = true },
+            }
           elseif name == 'indentscope' then
             -- 缩进线用 ASCII '|' 而不是 '│'：后者（U+2502）属于东亚「歧义宽度」
             -- 字符，在 ambiwidth=double 下会占 2 格，缩进线就和正文错位了。

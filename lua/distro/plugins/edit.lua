@@ -64,9 +64,23 @@ return {
       local ok, splits = pcall(require, 'smart-splits')
       if not ok then return end
       pcall(splits.setup, {
-        -- 到边界时不要自动在别的 tmux/kitty 面板间跳（我们没集成那些），
-        -- 否则光标会「跑出」编辑器，很难理解发生了什么
-        at_edge = 'stop',
+        -- 注意：这个插件是 **v3**，配置是**嵌套**的，不是扁平的。
+        -- `at_edge` 在 v3 里位于 move 之下。写成顶层会被它的 check_keys() 判为
+        -- 未知键，启动时弹警告「problems in your config, see :checkhealth
+        -- smart-splits」—— 我最初就是那么写的。
+        move = {
+          -- 到边界时不要跳到别的 tmux/kitty 面板：我们没集成那些，
+          -- 否则光标会「跑出」编辑器，很难理解发生了什么。
+          -- v3 的默认值是 wrap（环绕），正是我们不要的行为。
+          at_edge = 'stop',
+        },
+        -- 关掉「没检测到任何后端」的警告。
+        -- 原文：none of the configured backends detected, falling back to plain
+        -- window movement（backend.lua: 条件是 #specs > 0 且 warn_if_unusable）。
+        -- 它的意思是「没找到 tmux/kitty/wezterm 之类的复用器集成，退回普通窗口移动」
+        -- —— 对本发行版而言这**正是期望行为**，我们本来就不做复用器集成。
+        -- 留着它只会在每次启动时给用户一条看不懂、也不需要处理的警告。
+        mux = { warn_if_unusable = false },
       })
 
       local map = function(keys, fn, desc) vim.keymap.set('n', keys, fn, { desc = desc }) end
