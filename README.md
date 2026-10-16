@@ -1,20 +1,22 @@
 # 自制 Neovim 发行版
 
-目标是做一个**自包含、运行时零联网**的 Neovim 发行版，同时支持 Linux 与 Windows。
+目标是做一个**自包含、运行时零联网**的 Neovim 发行版：Neovim 本体、插件、命令行工具、
+预编译的 tree-sitter 解析器全部随包分发，解压即用。当前出 4 个平台 ——
+Linux x64 / Linux arm64 / Windows x64 / macOS Apple Silicon。
 
 ## 当前状态
 
 | 部分 | 状态 |
 | --- | --- |
-| 插件选型目录（206 条 / 24 分类） | ✅ 已按七步决策收敛，当前套用 `recommended` |
+| 插件选型目录（206 条 / 24 分类） | ✅ 已按七步决策收敛，当前套用 `recommended`（44 个插件） |
 | 架构设计与调研记录 | ✅ 已完成 |
-| 需求 5 搜索工作流 | ✅ 已实现，27 项断言在 `nvim 0.13.0-dev-1828` 上全部通过 |
-| 随包分发的命令行工具 | 🚧 进行中：`rg` / `fzf` / `fd` / `stylua` 已就位，`shfmt` / `ruff` 在补；版本记录见 [`bin/README.md`](bin/README.md) |
-| Neovim 本体 | ✅ 已装并可用：`D:\tools\nvim-win64\bin\nvim.exe`，已在 PATH 上 |
-| 插件 vendoring（`tools/vendor.ps1`） | ✅ 已执行：45/45 成功，41.4 MB，`vendor/lock.json` 已锁定 commit |
-| GitHub Actions 自动打包发布 | ✅ workflow 已写好（`.github/workflows/release.yml`）；**尚未实际跑过** |
-| 预置三个「编译/下载」风险项的产物 | ✅ 逻辑已写（`tools/harvest.lua`），由 CI 分平台执行 |
-| 配置骨架（插件装配 / LSP / 主题） | ⬜ 待做 |
+| 需求 5 搜索工作流 | ✅ 已实现并实测通过 |
+| 随包分发的命令行工具 | ✅ 6 个（`rg` / `fzf` / `fd` / `stylua` / `shfmt` / `shellcheck`），由 CI 按平台现取、**不进版本库**；`im-select.exe` 例外保留（上游产物名不含平台信息，无法可靠匹配） |
+| Neovim 本体 | ✅ **随包分发**（`runtime/`）。包里的 tree-sitter 解析器就是由它亲自编译的，所以 ABI 不会失配 —— 见 [`docs/INSTALL.md`](docs/INSTALL.md) 原理 11 |
+| 插件 vendoring（`tools/vendor.ps1`） | ✅ 已执行：45/45 成功，`vendor/lock.json` 锁定每个仓库的 commit |
+| GitHub Actions 自动打包发布 | ✅ 已跑通：4 个平台各出一个完整包，发到 Release（tag = `main+<UTC时间戳>+<短hash>`） |
+| 预置「编译/下载」风险项的产物 | ✅ 已跑通并实测：blink 原生库、jieba cdylib、21 个 tree-sitter 解析器都在包里 |
+| 配置骨架（11 个分组） | ✅ 已完成：`theme` `mini` `ui` `search` `syntax` `complete` `git` `edit` `lang` `zh` `misc` |
 
 跑测试（会真正调用 `rg`，所以需要能创建子进程的环境）：
 
@@ -27,13 +29,13 @@ pwsh -File tests/run.ps1     # Windows
 
 | 项目 | 你的选择 |
 | --- | --- |
-| 目标平台 | Linux + Windows，**均为 x64**（本机实测 `PROCESSOR_ARCHITECTURE=AMD64`，即 AMD Zen，非 ARM64） |
-| Neovim 版本 | **0.13 nightly** — 当前 nightly 是 `v0.13.0-dev-1828+g7e1ae5115f`（2026-10-11 发布） |
-| 打包范围 | 配置 + 插件为基准；**`rg` 与 `fzf` 因需求 4 必须随包分发**（约 4 MB），其余命令行工具假设目标机器已有 |
+| 目标平台 | **4 个平台各出一个包**：`linux64` / `linux-arm64` / `win64` / `darwin-arm64`。不出 `win-arm64`（上游有 3 个工具没有 Windows arm64 产物）与 macOS Intel（对应托管 runner 不可用） |
+| Neovim 版本 | **0.13 nightly**：CI 取最新一份并**打进包里**；当前是 `v0.13.0-dev-1828+g7e1ae5115f` |
+| 打包范围 | 每个包自带该平台的 Neovim、6 个命令行工具、预编译的 tree-sitter 解析器、以及两个插件的原生库 |
 | 离线要求 | 运行时零联网安装、零联网运行；插件全部随包分发 |
 | 搜索能力 | **必须可用**：`rg` 全文搜索 + `fzf` 或 `telescope` 模糊查找（需求 4） |
 | 大文件搜索 | **必须可用**：正则搜索 + 结果按行显示在独立窗口 + 点击跳转；禁用内置 `:vimgrep`（GB 级文件会卡死），走外部 `rg` + quickfix（需求 5） |
-| 打包方式 | **只打一个包**，内含 Windows 与 Linux 两套二进制（原「双 profile 两个产物」与「按平台出包」都作废） |
+| 打包方式 | **每个平台一个包**（原「只打一个包、内含两平台二进制」已作废 —— 那样每个包都要带一半用不到的东西） |
 | 用途 | 通用为主，另加 Lua/Neovim 配置开发、C/C++/嵌入式、Python、写作与 Markdown、运维与 Shell |
 
 **已定细节**：搜索结果窗口**双击跳转**（单击只移动光标）；默认 picker 用 **`fzf-lua`**，故 `fzf` 二进制随包分发。见 [`docs/SEARCH-WORKFLOW.md`](docs/SEARCH-WORKFLOW.md)。

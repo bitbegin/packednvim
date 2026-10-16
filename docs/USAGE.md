@@ -147,14 +147,38 @@ Lua 的 `luacheck` 没有官方预编译产物，需自行安装或构建——�
 
 ---
 
-## 尚未接线
+## 现在能做什么（11 个配置分组全部已接线）
 
-诚实说明：配置骨架里还有几个分组没写完（`syntax` / `complete` / `git` / `edit` /
-`lang` / `zh` / `misc`），所以下面这些插件的配置目前尚未生效：
+| 你要做的事 | 入口 | 背后是谁 |
+| --- | --- | --- |
+| 全项目搜索，结果按行进窗口、可点击跳转 | `<leader>s*` | 随包 `rg` + quickfix |
+| 模糊查找文件/内容 | `<leader>f*` | `fzf-lua` + 随包 `fzf`/`fd` |
+| 补全与片段 | 插入模式自动 | `blink.cmp` + `LuaSnip` + `friendly-snippets` |
+| 语法高亮 / 折叠 / 缩进 | 打开文件即生效，`za`/`zc` 折叠 | `nvim-treesitter`（解析器随包） |
+| 按语法节点选择与跳转 | `af` `if` `ac` `ic` `aa` `ia`、`]]` `[[` | `nvim-treesitter-textobjects` |
+| **中文按词移动** | `w` `b` `e` | `jieba.vim`（cdylib 随包） |
+| **输入法自动切换** | 自动（进出插入模式） | `im-select`（Windows 用随包 exe；Linux 用 fcitx5/ibus） |
+| LSP 补全 / 跳转 / 重命名 | `gd` `gr` `K` `<leader>rn` `<leader>ca` … | 内置 LSP + `nvim-lspconfig` |
+| 诊断列表 | `<leader>xx` `<leader>xX` `<leader>xs` | `trouble.nvim`（懒加载） |
+| 格式化 | 保存时自动，`<leader>fmt` 手动 | `conform.nvim` |
+| 静态检查 | 保存、离开插入模式时自动 | `nvim-lint`（`shellcheck` 随包） |
+| Git 标记与逐块操作 | `]c` `[c`、`<leader>gs/gr/gp/gb/gd` | `gitsigns.nvim` |
+| Git 面板 / 差异 / 历史 | `<leader>gg` `<leader>gc` `<leader>gD` `<leader>gh` | `neogit` / `diffview`（懒加载） |
+| 目录编辑（像编辑文本一样改文件名） | `<leader>e` 或 `-` | `oil.nvim`（懒加载） |
+| 撤销历史可视化 | `<leader>uU` | `undotree`（懒加载） |
+| TODO / FIXME 汇总 | `<leader>xt` `<leader>xq`、`]T` `[T` | `todo-comments.nvim` |
+| Markdown 渲染 | 打开 `.md` 即生效 | `render-markdown.nvim` |
+| 启动耗时明细 | `<leader>ut` | `vim-startuptime`（懒加载） |
+| 固定显示当前函数/类头部 | `<leader>uc` | `treesitter-context`（懒加载） |
+| 同一符号的所有引用高亮 | 光标停留即生效，`]r`/`[r` 跳转 | `vim-illuminate` |
 
-blink.cmp（补全）、LuaSnip（片段）、lazydev、nvim-treesitter 的启用配置、
-ts-comments、treesitter-context、gitsigns 的显式键位、neogit、diffview、
-render-markdown、todo-comments、mini 的部分附加模块。
+完整键位见 [快捷键速查](KEYMAPS.md) —— 那份是**由配置生成的**，不会与实际脱节。
 
-**插件本身已经 vendor 进包**，缺的只是 `lua/distro/plugins/` 下对应的配置分组。
-`:checkhealth distro` 的插件一节会反映真实情况。
+## 仍然需要自备的
+
+语言服务器与少数检查器按决定**不打包**：
+
+`lua_ls`、`clangd`、`basedpyright`/`pyright`、`bash-language-server`、`jsonls`、`yamlls`；
+以及 `luacheck`（无官方预编译产物）、`clang-format`、`clang-tidy`、`ruff`。
+
+缺了不影响启动，`:checkhealth distro` 会列出缺哪些以及各自影响什么。
