@@ -15,19 +15,23 @@ local M = {}
 -- 模块名以 mini.nvim 实际提供的为准（曾凭记忆写成 basename/hips，并不存在）。
 M.enabled = {
   'ai', 'align', 'animate', 'bracketed', 'bufremove',
-  'clue', 'comment', 'extra',
+  'comment', 'extra',
   'hipatterns', 'icons', 'indentscope', 'jump', 'map',
   'operators', 'pairs', 'sessions', 'splitjoin',
   'starter', 'surround', 'tabline', 'trailspace', 'visits',
 }
 
 -- 选型审查（2026-10）后**有意不再启用**的模块，原因是与专精插件撞了职责：
+--   clue       —— 键位提示由 which-key 承担（用户确认：按键记不住，先要
+--                 which-key，熟练后再评估切回）。另外 clue 的 <leader> 触发
+--                 在其内部表示法下查询恒空（映射 LHS 的原始字节 vs
+--                 keytrans 符号形式，见 git 历史同名提交）。
 --   cursorword —— 光标词高亮，与 vim-illuminate（LSP 引用高亮）双重高亮同一批词
 --   diff       —— 符号列 diff 标记，与 gitsigns 的 + ~ _ 画在同一列
 --   git        —— hunk 操作，gitsigns 已全部覆盖且 <leader>g* 键位已接好
---   notify     —— 从未把 vim.notify 接线到它，纯死重量；通用通知走原生 cmdline
 --   files      —— 与 oil 同属「文件浏览器」互斥格；check-stack 的一格一赢家
 --                 否决了双入口（见 catalog/STACKS.toml），文件浏览由 oil 承担
+--   notify     —— 从未把 vim.notify 接线到它，纯死重量；通用通知走原生 cmdline
 -- mini.nvim 整体是一个仓库，禁用模块不省体积 —— 省的是启动时间与「双重行为」。
 
 -- 有意不启用的模块及原因（写在这里，免得被当成遗漏）：
@@ -135,25 +139,6 @@ return {
             local dir = vim.fn.stdpath('state') .. '/sessions'
             vim.fn.mkdir(dir, 'p')
             cfg = { directory = dir }
-          elseif name == 'clue' then
-            -- clue 是**唯一**的键位提示，但**只管内置前缀**（g/z/寄存器/窗口）。
-            -- <leader> **不在**触发器里 —— 这是实测结论，不是疏忽：
-            -- mini.clue 收集映射线索用映射的原始字节（如 '<Space>sg'），
-            -- 而查询键走 keytrans 符号形式（'<leader>' 不会被 replace_termcodes
-            -- 展开），两套表示法对不上 —— <leader> 触发时窗口永远显示空。
-            -- （g/z 这类可打印前缀两边表示一致，所以正常。）
-            -- 移除 <leader> 触发后，space+sg 走原生映射直接执行（无弹窗）。
-            -- 若上游修复了对 <leader> 的处理，把这两个触发器加回来即可。
-            cfg = {
-              triggers = {
-                { mode = 'n', keys = 'g' },
-                { mode = 'n', keys = 'z' },
-                { mode = 'n', keys = "'" },
-                { mode = 'n', keys = '"' },
-                { mode = 'n', keys = '<C-w>' },
-                { mode = 'x', keys = 'g' },
-              },
-            }
           elseif name == 'map' then
             cfg = { window = { config = { relative = 'editor', border = 'rounded' } } }
           end

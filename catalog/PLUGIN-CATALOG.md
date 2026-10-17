@@ -242,8 +242,8 @@
 
 ## P. 快捷键提示
 
-- [ ] **folke/which-key.nvim** · 作用：按下前缀键后弹出可用键位，预设丰富 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0 · 备注：上游更新放缓
-- [x] **nvim-mini/mini.nvim#mini.clue** · 作用：常驻键位提示 HUD，可自定义触发前缀 · 依赖：纯 Lua · 档位：core · 许可：MIT
+- [x] **folke/which-key.nvim** · 作用：按下前缀键后弹出可用键位，预设丰富 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0 · 备注：上游更新放缓
+- [ ] **nvim-mini/mini.nvim#mini.clue** · 作用：常驻键位提示 HUD，可自定义触发前缀 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [ ] **tris203/hawtkeys.nvim** · 作用：扫描出尚未被占用的键位 · 依赖：纯 Lua · 档位：extra · 备注：活跃度低，选用前先确认
 
 ## Q. 终端 · 任务 · 数据库 · HTTP

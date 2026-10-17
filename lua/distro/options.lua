@@ -137,7 +137,7 @@ opt.listchars = { tab = '> ', trail = '-', nbsp = '+' }
 opt.fillchars = { eob = ' ', fold = ' ', foldopen = '-', foldclose = '+' }
 opt.pumheight = 12             -- 补全菜单最多 12 行，别挡住半个屏幕
 opt.winminwidth = 5
-opt.timeoutlen = 400           -- 等 mini.clue 弹出与组合键的超时
+opt.timeoutlen = 400           -- 等 which-key 弹出与组合键的超时
 opt.updatetime = 200           -- 诊断与 gitsigns 的刷新间隔
 
 -- ---------------------------------------------------------------------------

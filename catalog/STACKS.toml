@@ -77,8 +77,7 @@ plugins = [
 desc = "推荐：把体验件换成专精实现，LSP / 格式化 / 诊断链路补齐。日常主力方案。"
 plugins = [
   # --- mini.nvim 模块（同一个仓库；与 minimal 的差异在下面注释里）---
-  "nvim-mini/mini.nvim#mini.tabline",     # 状态栏用 lualine；键位提示用 mini.clue（which-key 已按选型审查移除：与 clue 职责相同）
-  "nvim-mini/mini.nvim#mini.clue",
+  "nvim-mini/mini.nvim#mini.tabline",     # 状态栏用 lualine；键位提示用 which-key（用户确认；mini.clue 的 <leader> 触发在其内部表示法下失效，见 mini.lua 注释）
   "nvim-mini/mini.nvim#mini.starter",     # <leader>E 文件树已撤：与 oil 同属「文件浏览器」互斥格，一格一赢家
   "nvim-mini/mini.nvim#mini.sessions",
   "nvim-mini/mini.nvim#mini.visits",
@@ -104,6 +103,7 @@ plugins = [
   "rose-pine/neovim",
   "nvim-lualine/lualine.nvim",
   "nvim-tree/nvim-web-devicons",
+  "folke/which-key.nvim",
   "j-hui/fidget.nvim",
   "stevearc/dressing.nvim",
   "mbbill/undotree",
@@ -181,6 +181,7 @@ plugins = [
   "rose-pine/neovim",
   "nvim-lualine/lualine.nvim",
   "nvim-tree/nvim-web-devicons",
+  "folke/which-key.nvim",
   "j-hui/fidget.nvim",
   "mbbill/undotree",
   "RRethy/vim-illuminate",

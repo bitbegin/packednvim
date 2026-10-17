@@ -1,14 +1,14 @@
--- 界面：状态栏 / LSP 进度 / 输入框 / 图标。
+-- 界面：状态栏 / 键位提示 / LSP 进度 / 输入框 / 图标。
 --
--- 这里的选择都是「与 mini 主心骨不重复」的：
+-- 这里的选择都是「与 mini 主心骨不重复或经用户确认」的：
 --   lualine      取代 mini.statusline（中文用户更熟悉，配置直观）
+--   which-key    键位提示（<leader> 与内置前缀）。曾与 mini.clue 并存造成
+--                双重弹窗，选型审查后二选一；后因 clue 的 <leader> 触发在
+--                其内部表示法下失效、且用户确认先要 which-key，
+--                2026-10 起由 which-key 独占该职责（clue 已在 mini.lua 禁用）
 --   dressing     取代 mini.input，让输入框与 fzf-lua 的视觉风格一致
 --   devicons     mini.icons 负责图标，devicons 只补它缺的品牌图标
 --   fidget       LSP 进度显示
---
--- 键位提示**不在这一组**：mini.clue（见 mini.lua）是唯一的提示弹窗。
--- which-key.nvim 曾与 mini.clue 并存 —— 两者同为「按前缀弹键位提示」，
--- 同时启用会双重弹窗/互相抢触发，选型审查后已移除。
 
 local function bundled(name)
   local root = vim.g.distro_root or ''
@@ -41,6 +41,22 @@ return {
         },
         -- 大文件里关掉 diff 与诊断段：那些都需要额外计算
         tabline = {},
+      })
+    end,
+  },
+
+  {
+    names = 'which-key.nvim',
+    pack = 'start',
+    setup = function()
+      require('which-key').setup({
+        preset = 'modern',
+        -- 图标故意用 ASCII：在 ambiwidth=double 时代防错位。现在 single 已
+        -- 解除约束，保持 ASCII 是实测过的稳定选择。
+        icons = { breadcrumb = '>', separator = '->', group = '+' },
+        -- 每个键位都设了 desc（见 keymaps.lua 与各插件配置），所以这里不需要额外 spec
+        spec = {},
+        win = { border = 'rounded', padding = { 1, 2 } },
       })
     end,
   },
