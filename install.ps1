@@ -83,9 +83,15 @@ if ($Uninstall) {
         $extKey = Join-Path 'HKCU:\Software\Classes' ".$e"
         # only drop the default value if it still points at us
         if ($e -and (Get-Default $extKey) -like 'packednvim*') {
-            # Remove-ItemProperty -Name '(default)' 在 PS 5.1 里对「默认值」静默失效
-            # （实测：调用不报错但值仍在）。reg delete /ve 才是可靠写法。
-            & reg delete "HKCU\Software\Classes\.$e" /ve /f 2>&1 | Out-Null
+            # Remove-ItemProperty -Name '(default)' 与 reg delete /ve 在实测里
+            # 都出现过「命令不报错但默认值仍在」。直接用 .NET 注册表 API 删
+            # 默认值（名称为空串），并用回读校验，避免又一次假成功。
+            $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\Classes\.$e", $true)
+            if ($key) {
+                try { $key.DeleteValue('', $false) } catch { }
+                $key.Close()
+            }
+            if (Get-Default $extKey) { Write-Warning "could not clear the default value of .$e" }
             Write-Step "removed default handler for .$e"
         }
         $owp = Join-Path $extKey 'OpenWithProgids'

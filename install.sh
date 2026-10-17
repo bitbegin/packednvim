@@ -63,6 +63,13 @@ echo "  package: $PKG"
 echo "  ext:     $EXTS"
 
 # ---- PATH block -----------------------------------------------------------
+# ---- clearing the download quarantine (macOS) ------------------------------
+if command -v xattr >/dev/null 2>&1; then
+  echo "=== 0. Clearing the download quarantine ==="
+  find "$PKG" -type f -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
+  echo "  done (no-op when the files were not downloaded)"
+fi
+
 echo "=== 1. PATH ==="
 for f in $RC_FILES; do
   # only touch shells whose rc file already exists
