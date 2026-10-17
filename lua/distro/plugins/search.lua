@@ -74,6 +74,23 @@ return {
           fd_opts = '--color=never --type f --type l --exclude .git --exclude .jj --exclude .local',
         },
 
+        -- 让 fzf 用 ASCII 画界面，而不是 Unicode 方块/竖线。
+        --
+        -- 原因：本发行版为中文把 ambiwidth 设为 double，于是东亚「歧义宽度」字符
+        -- 在终端里占 2 格。而 fzf 是在 Neovim 的终端缓冲区里**自己画界面**的，
+        -- 它不知道 ambiwidth 这回事 —— 它的默认指针 `▌`（U+258C）、标记 `┃`
+        -- 都属歧义宽度：fzf 以为占 1 格、终端按 2 格渲染，于是每行错位，
+        -- 分隔线与边框被截成残片，看起来就是屏幕上一根根的 `--`。
+        --
+        -- --no-unicode 让 fzf 全部改用 ASCII 字符，宽度恒为 1，彻底避开这个冲突。
+        -- 代价是失去那点方块字形，换来界面不歪 —— 与 listchars 用 ASCII、
+        -- gitsigns 符号列用 ASCII 是同一个取舍。
+        --
+        -- 请注意：这是**推断**（依据是同一类宽度冲突已在三处出现过），
+        -- 我没法在无头环境里看到 fzf 的实际界面。若改了仍不对，
+        -- 需要一张截图才能定论。
+        fzf_opts = { ['--no-unicode'] = true },
+
         winopts = {
           height = 0.85,
           width = 0.85,
