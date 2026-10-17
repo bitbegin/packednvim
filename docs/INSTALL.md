@@ -156,23 +156,67 @@ nvim --headless -u init.lua -c "lua print(#vim.api.nvim_get_runtime_file('parser
 
 ### 5. 卸载
 
-**直接删掉整个目录即可。** 这是刻意的设计：所有运行期状态（会话、undo、
-byte-code 缓存、插件数据）都写在发行版目录内的 `.local/`，不碰用户主目录。
-详见下面的「原理 2」。
+分两种情况：
 
-### 6. 可选：让它在任何目录都能启动
+**只当便携包用（没跑过安装脚本）**：直接删掉整个目录即可。所有运行期状态
+（会话、undo、byte-code 缓存、插件数据）都写在发行版目录内的 `.local/`，
+不碰用户主目录。详见下面的「原理 2」。
 
-**Windows**：把发行版目录加进 PATH，然后直接用 `nvim` 会走系统那份；
-想用自己的那份就显式调 `nvim.cmd`。或者建一个快捷方式指向 `nvim.cmd`。
+**跑过 `install.cmd` / `install.sh`**：先撤销系统改动，再删目录。
 
-**Linux**：
-
-```bash
-ln -s /opt/packednvim/nvim.sh ~/.local/bin/pnvim
-pnvim                     # 任何目录都能用
+```bat
+install.cmd /u
 ```
 
-注意别把发行版目录直接加进 PATH 而不经 `nvim.sh` —— 那样 XDG 隔离不会生效。
+```bash
+./install.sh --uninstall
+```
+
+它只删自己加的东西：PATH 条目、`.<ext>` 关联、右键菜单项、应用注册，以及
+`.local/install-state.json` 这份状态记录。若某个扩展名的默认值在你安装后被
+别处改过，脚本不会覆盖（只在仍指向本发行版时才清）。
+
+### 6. 安装脚本：PATH、文件关联、右键菜单
+
+包根目录的 `install.cmd`（Windows）与 `install.sh`（Unix）是唯一需要手动跑的
+安装入口，**全部是用户级操作，不需要管理员**。
+
+| 做什么 | Windows | Unix |
+| --- | --- | --- |
+| 清网络标记 | 整包 `Unblock-File`（第 0 步，防「无法验证发布者」） | 清 macOS `com.apple.quarantine` |
+| 加 PATH | 用户 PATH 追加 `<包>\bin`（自动去重） | 在 `~/.bashrc`、`~/.zshrc` 写入**带标记**的块，可精确删除 |
+| 文件关联 | `.md` / `.markdown` → `packednvim.<ext>` | 写 `packednvim.desktop` 并 `xdg-mime default` |
+| 右键菜单 | 所有文件类型加「Open with packednvim」 | 文件管理器的「打开方式」里出现 Neovim (packednvim) |
+| 自定义扩展名 | `install.cmd md txt json` | `./install.sh md txt json` |
+| 撤销 | `install.cmd /u` | `./install.sh --uninstall` |
+
+**关于「双击 .md 仍然问一次用哪个程序」**：这是 Windows 的设计，不是脚本没写好。
+最终生效的默认程序由 `UserChoice` 决定，而这个键带哈希校验，**只有系统对话框
+能合法写入**；脚本能做的是把本发行版注册进「打开方式」列表。在对话框里选一次
+`packednvim (Neovim)` 并勾「始终使用」，之后就不再询问。
+
+排查提醒：`assoc .md` / `ftype packednvim.md` 只反映**机器级**（HKLM）关联，
+本发行版用的是用户级（HKCU）关联，这两个命令看不到——不要据此判断安装失败，
+以双击行为为准。另外，若系统里有第三方工具在「备份/恢复」文件关联，卸载后
+可能残留一个默认值；`install.ps1` 会在删不掉时打印 `WARNING` 而不是假装成功。
+
+### 7. 启动器一览
+
+包根目录的几个入口各自用途不同，**都不是冗余文件**：
+
+| 文件 | 用途 | 为什么不能省 |
+| --- | --- | --- |
+| `nvim.cmd` / `nvim.sh` | 终端 Neovim | 唯一设置 4 个 XDG 变量 + `TMPDIR` + `PATH` 前置并传 `-u init.lua` 的地方；去掉就会读系统配置 |
+| `neovide.cmd` / `neovide.sh` | GUI（Neovide） | Neovide 自己 spawn nvim，环境变量必须在这里设好才会被继承，否则 GUI 里的 nvim 不走本发行版配置 |
+| `neovide.vbs` | GUI 的**无黑窗**入口 | `.cmd` 必然分配控制台窗口，`start /min` 压不掉；VBS 用 `WScript.Shell.Run` 隐藏启动，双击才是一个干净的 GUI 窗口 |
+| `neovide.toml` | GUI 外观配置 | 启动器用 `NEOVIDE_CONFIG` 指过来，配置跟着包走、不污染 `%APPDATA%` |
+| `install.cmd` / `install.sh` / `install.ps1` | 安装 / 卸载 | 见上一节 |
+
+`bin/neovide.exe` 约 34 MB，是这些启动器存在的前提。如果只需要终端 Neovim，
+可以删掉 `bin/neovide.exe` 与四个 `neovide.*` 文件，并同步移除
+`tools/package.ps1` 的 `INCLUDE` 条目和 `tools/fetch-tools.ps1` 的 neovide 规格。
+**当前的选择是两者都带**：终端入口 `nvim.cmd`，GUI 入口 `neovide.vbs` 双击即用。
+
 
 ---
 
