@@ -62,10 +62,14 @@ function Get-Specs {
             $s += @{ Tool='stylua';     Repo='JohnnyMorganz/StyLua';    Pattern='*linux-x86_64.zip';                 Mode='file'; Member='stylua';       Out='stylua' }
             $s += @{ Tool='shfmt';      Repo='mvdan/sh';                Pattern='*_linux_amd64';                     Mode='raw';  Member='';             Out='shfmt' }
             $s += @{ Tool='shellcheck'; Repo='koalaman/shellcheck';     Pattern='*.linux.x86_64.tar.xz';             Mode='file'; Member='shellcheck';   Out='shellcheck' }
-            # Neovide（GUI 前端）。官方产物是「单个裸二进制」的 tar，
-            # 资源全编进可执行文件，没有伴随目录 —— 所以能和 rg 一样放进 bin/。
-            # 它只提供 x86_64 产物，故 linux-arm64 与 darwin-* 均不列此项。
-            $s += @{ Tool='neovide';    Repo='neovide/neovide';        Pattern='neovide-linux-x86_64.tar';          Mode='file'; Member='neovide';      Out='neovide' }
+            # Neovide（GUI 前端）。必须取 **nightly** 而不是稳定版：
+            # 稳定版 0.16.2 解析不了 nvim 0.13 nightly 的 nvim_get_api_info，
+            # 表现为「Failed to parse Neovim api information / Invalid parameter」，
+            # 实测连裸 nvim（不带任何配置）也一样失败，与本发行版配置无关。
+            # 产物是「单个裸二进制」的 .tar.gz，资源全编进可执行文件、
+            # 没有伴随目录 —— 所以能和 rg 一样放进 bin/。
+            # 上游只提供 x86_64 产物，故 linux-arm64 与 darwin-* 均不列此项。
+            $s += @{ Tool='neovide';    Repo='neovide/neovide';        Tag='nightly'; Pattern='neovide-linux-x86_64.tar.gz'; Mode='file'; Member='neovide';      Out='neovide' }
         }
         'linux-arm64' {
             # 注意 ripgrep / fd 在 arm64 linux 上提供的是 gnu 而非 musl 构建
@@ -88,7 +92,10 @@ function Get-Specs {
             # Neovide（GUI 前端）。官方产物 neovide.exe.zip 里就是一个裸 exe，
             # 不依赖额外目录或 DLL（Rust 静态链接受 VC++ 运行时），
             # 因此与其它单文件工具一样放进 bin/。启动器会优先用 bin/neovide.exe。
-            $s += @{ Tool='neovide';    Repo='neovide/neovide';        Pattern='neovide.exe.zip';                   Mode='file'; Member='neovide.exe';   Out='neovide.exe' }
+            # 同样取 nightly：稳定版 0.16.2 解析不了 nvim 0.13 nightly 的
+            # nvim_get_api_info（"Failed to parse Neovim api information /
+            # Invalid parameter"），实测与配置无关，裸 nvim 也一样失败。
+            $s += @{ Tool='neovide';    Repo='neovide/neovide';        Tag='nightly'; Pattern='neovide-windows-x86_64.zip'; Mode='file'; Member='neovide.exe';   Out='neovide.exe' }
         }
         'darwin-x64' {
             $s += @{ Tool='ripgrep';    Repo='BurntSushi/ripgrep';      Pattern='*x86_64-apple-darwin.tar.gz';       Mode='file'; Member='rg';           Out='rg' }
@@ -137,9 +144,18 @@ $relCache = @{}
 foreach ($spec in Get-Specs -P $Platform) {
     Write-Host ("`n-- {0}" -f $spec.Tool) -ForegroundColor Cyan
 
-    # 同一个仓库多个平台共用，每个仓库只查一次 API
-    if (-not $relCache.ContainsKey($spec.Repo)) {
-        $raw = & $Curl @apiHeaders -sSL --max-time 120 "https://api.github.com/repos/$($spec.Repo)/releases/latest" 2>$null
+    # 同一个仓库的同一个 release 只查一次 API。
+    # 缓存键必须带上 Tag：同一仓库可能既取稳定版又取滚动版（暂无此例，
+    # 但缓存键少了 Tag 就会在未来悄悄复用错的 release）。
+    $relKey = if ($spec.Tag) { "$($spec.Repo)@$($spec.Tag)" } else { "$($spec.Repo)@latest" }
+    if (-not $relCache.ContainsKey($relKey)) {
+        # 默认取稳定版；spec 里写了 Tag 的取指定标签（例如 Neovide 的 nightly）。
+        $relUrl = if ($spec.Tag) {
+            "https://api.github.com/repos/$($spec.Repo)/releases/tags/$($spec.Tag)"
+        } else {
+            "https://api.github.com/repos/$($spec.Repo)/releases/latest"
+        }
+        $raw = & $Curl @apiHeaders -sSL --max-time 120 $relUrl 2>$null
         # curl 输出是按行拆分的数组，必须拼回字符串再解析
         $json = ($raw -join "`n")
         if (-not $json) {
@@ -156,9 +172,9 @@ foreach ($spec in Get-Specs -P $Platform) {
             Write-Host ("   查询失败：{0}" -f $why) -ForegroundColor Red
             continue
         }
-        $relCache[$spec.Repo] = $rel
+        $relCache[$relKey] = $rel
     }
-    $rel = $relCache[$spec.Repo]
+    $rel = $relCache[$relKey]
 
     $asset = $rel.assets | Where-Object { $_.name -like $spec.Pattern } | Select-Object -First 1
     if (-not $asset) {

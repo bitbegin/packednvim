@@ -156,6 +156,24 @@ Lua 的 `luacheck` 没有官方预编译产物，需自行安装或构建——�
 后两个平台启动器会明确报错并提示装法，`:checkhealth distro` 也会说明，
 **不影响终端模式**——`nvim.cmd` / `nvim.sh` 照常可用。
 
+### 为什么随包的是 Neovide **nightly** 而不是稳定版
+
+这是实测结论，不是偷懒：**Neovide 稳定版 0.16.2（当前最新）解析不了
+nvim 0.13 nightly 的 `nvim_get_api_info`**，一启动就报
+
+```
+Failed to launch neovim runtime: Failed to parse Neovim api information
+Caused by: Invalid parameter
+```
+
+关键证据：拿**裸 nvim**（完全不加载本发行版配置）同样失败，说明与我们的配置无关，
+纯粹是 Neovide 与 nvim 0.13 的 API 元数据不兼容。同一台机器上换 Neovide nightly
+立即正常。
+
+本项目目标就是 nvim 0.13 nightly，所以只能配 Neovide nightly。代价是它是滚动产物
+（不可按 tag 复现）；`bin/manifest.json` 里记录了下载时的 `sha256`，
+可用来确认「这份包里的 Neovide 到底是哪个构建」。
+
 ### 启动
 
 用**随包的启动器**，不要直接开 `neovide.exe`：
@@ -200,9 +218,20 @@ GUI 外观放在随包的 [`neovide.toml`](../neovide.toml) 里（字体、字�
 > ⚠️ 默认字体不含中文字形。`neovide.toml` 里已配了 Sarasa Mono SC 与
 > Microsoft YaHei 作为回退，**如果你的机器上这两个都没有**，中文会显示成方块。
 > 改成你实际装了的等宽中文字体即可。
+>
+> ⚠️ 加字体回退时**只能**用 `[[font.normal]]` 数组表逐条写，不能同时出现
+> `normal = ["..."]` —— 那是 TOML 的 `duplicate key`，Neovide 会**整份配置作废**
+> 并静默退回默认（表现就是中文成方块、字号也不对）。命令行启动时能看到
+> `TOML parse error ... duplicate key`，但双击启动时看不到，很容易误判成字体没装。
 
 编辑器侧的行为（光标动画、缩放等）在 `lua/distro/options.lua` 的 GUI 一节，
 只在 `vim.g.neovide` 为真时生效，终端模式下不受影响。
+
+> 注意时序：Neovide 自己是在 nvim 启动**之后**通过 RPC 才设 `g:neovide` 的，
+> 那样 `init.lua` 里已经来不及判断。所以启动器额外传了
+> `--cmd 'let g:neovide=v:true'`，让该变量在 init 之前就存在。
+> 但 Neovide 读取 `g:neovide_*` 的时机更早，日志里仍会出现几条
+> `Key not found` —— 那是无害的，我们设的值与 Neovide 默认值基本一致。
 
 ### 排错
 
