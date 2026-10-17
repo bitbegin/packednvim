@@ -216,6 +216,21 @@ jobs:
           if (-not (Test-Path $lib)) { throw "构建后仍找不到 $lib" }
           Get-Item $lib | Select-Object FullName, Length
 
+          # 构建树清理：cargo 留下的 rust_backend/ 有 200+ MB（其中 target/
+          # 是增量编译产物），而运行时只需要上面已就位的那个 cdylib。
+          # 不清理的话四个平台每个包都会背上它 —— 审计发现 jieba.vim 曾因此
+          # 一个插件占 218.8 MB（rust_backend/target 占 212.4 MB），
+          # 而整个压缩包才 122.5 MB。
+          # （pythonx/ 是 release 分支自带的 py3 绑定，插件可能按 has('python3')
+          #   选择加载路径，未经确认不删。）
+          $rb = "pack/distro/start/jieba.vim/rust_backend"
+          if (Test-Path $rb) {
+            $sz = [math]::Round(((Get-ChildItem $rb -Recurse -File -ErrorAction SilentlyContinue |
+              Measure-Object Length -Sum).Sum)/1MB, 1)
+            Remove-Item $rb -Recurse -Force
+            Write-Host "已删除构建树 rust_backend/（$sz MB）"
+          }
+
       # ---- 用包内这个 nvim 编译解析器 ------------------------------------
       - name: 编译 tree-sitter 解析器并校验产物
         shell: pwsh

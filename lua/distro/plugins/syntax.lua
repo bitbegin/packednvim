@@ -90,17 +90,17 @@ return {
 
   {
     names = 'ts-comments.nvim',
-    pack = 'opt',
-    keys = { 'gc', 'gcc', 'gb' },
+    pack = 'start',
     desc = '按语法树决定注释符号',
     setup = function()
-      -- 它接管 gc/gcc/gb，让 JSX、嵌入式 SQL 这类场景用对注释符。
-      -- 与 mini.comment 的分工：mini.comment 是基础实现，ts-comments 覆盖
-      -- 那些「注释符取决于语法节点」的语言。两者可以共存，ts-comments 优先。
-      pcall(require('ts-comments').setup, {
-        -- 空白行不触发判定，避免在空行上猜错注释符
-        try_original_first = true,
-      })
+      -- 它**不提供注释键位**，而是修正 &commentstring —— JSX、嵌入式 SQL 这类
+      -- 「注释符取决于语法节点」的场景由它给对；gc/gcc/gb 仍由 mini.comment 提供。
+      --
+      -- 必须启动即加载：它靠 FileType 事件逐缓冲区设置 commentstring，
+      -- 懒加载会错过已打开的缓冲区，第一次按 gc 可能就用错注释符。
+      -- 我最初把它挂在 gc/gcc/gb 上懒加载 —— 既误解了它的职责
+      -- （那些键是 mini.comment 的），时机也错了（FileType 早触发过了）。
+      pcall(require('ts-comments').setup, {})
     end,
   },
 

@@ -62,6 +62,11 @@ return {
     keys = { '<leader>gg', '<leader>gc' },
     desc = 'Git 状态面板（Magit 风格）',
     setup = function()
+      -- 先装 diffview 再 setup：neogit 声明了 integrations.diffview，
+      -- 但两者都是懒加载 —— 用户没按过 <leader>gD 时 diffview 不在
+      -- runtimepath 上，neogit 打开 diff 时会找不到模块。
+      -- 在这里显式补装，保证被依赖者与依赖者同时就位。
+      require('distro.pack').add('diffview.nvim')
       pcall(require('neogit').setup, {
         -- 集成我们已有的 diffview（它也随包分发）
         integrations = { diffview = true },

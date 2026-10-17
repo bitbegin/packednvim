@@ -12,14 +12,14 @@
 
 | 入口 | 形态 | 什么时候用 |
 | --- | --- | --- |
-| `<leader>s*` | rg 结果进 quickfix **窗口**，按行列出 | 想**一眼看全**所有命中，并且**用鼠标点一下就跳过去** |
+| `<leader>s*` | rg 搜索：`sg` 走 fzf 实时界面，其余进 quickfix **窗口**（按行列出） | 想**看全命中并点击跳转**，或**边打字边筛** |
 | `<leader>f*` | fzf-lua 交互界面，边打字边过滤 | 想**快速模糊筛**到某一个结果 |
 
-### `<leader>s*`：rg + quickfix（这条是需求 5 的形态）
+### `<leader>s*`：rg 搜索（`sg` 实时 / 其余进 quickfix）
 
 | 键位 | 作用 |
 | --- | --- |
-| `<leader>sg` | 实时 grep。边输入边刷新结果，结果按行显示在 quickfix 里 |
+| `<leader>sg` | 实时 grep（fzf-lua 界面）。边输入边刷新，回车打开所在文件 |
 | `<leader>sG` | 输入正则后进 quickfix（适合复杂模式） |
 | `<leader>su` | 连被 `.gitignore` 忽略的文件一起搜 |
 | `<leader>sw` | 直接搜光标下的单词 |

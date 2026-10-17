@@ -32,8 +32,13 @@ return {
         },
       })
 
-      -- 触发时机：写入后 + 离开插入模式后（后者带节流，避免打字时反复调用）
-      vim.api.nvim_create_autocmd({ 'BufWritePost', 'InsertLeave', 'TextChanged' }, {
+      -- 触发时机：写入后 + 离开插入模式。
+      --
+      -- 曾经还挂了 TextChanged —— 那会在**每次普通模式的文本变动**
+      -- （x、dd、J、p …… 每个编辑动作）时都跑一遍外部 linter，
+      -- 等于敲一下键就开一批子进程，性能不可接受。
+      -- nvim-lint 官方推荐的就是这两个事件。
+      vim.api.nvim_create_autocmd({ 'BufWritePost', 'InsertLeave' }, {
         group = AUG,
         callback = function()
           -- 大文件不检查：search.lua 会打这个标记
@@ -53,8 +58,8 @@ return {
       local ok, render = pcall(require, 'render-markdown')
       if not ok then return end
       pcall(render.setup, {
-        -- 中文排版：标题与列表的对齐依赖字符宽度，而我们设了 ambiwidth=double，
-        -- 所以这里关掉那些「用字符拼出来的装饰」（它们按 1 格宽计算的），
+        -- 中文排版：标题与列表的对齐依赖字符宽度（ ambiwidth 现为 single，
+        -- 歧义字符按 1 格算），这里关掉「用字符拼出来的装饰」，
         -- 只保留标题符号、项目符号、代码块背景这类宽度无关的渲染。
         heading = { sign = false, icons = { ' ', ' ', ' ', ' ', ' ', ' ' } },
         bullet = { enabled = true },

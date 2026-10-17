@@ -40,6 +40,9 @@ bin/shfmt
 bin/shfmt.exe
 bin/shellcheck
 bin/shellcheck.exe
+# manifest 记录「本平台包里实际有哪些工具」，由 CI 每次构建现生成。
+# 提交在版本库里的那份必然过时（工具二进制已移出版本库），只会误导。
+bin/manifest.json
 
 # 构建产物
 runtime/
