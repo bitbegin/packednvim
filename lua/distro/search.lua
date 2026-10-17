@@ -183,12 +183,31 @@ local function fzf_grep()
   if not ok then
     return false
   end
+  -- 注意 fzf.grep_lgrep 在现代 fzf-lua 里**不存在**（lgrep 是个布尔选项，
+  -- 不是 provider），所以这里一直走的是 live_grep。保留 or 链是为兼容旧版。
   local fn = fzf.grep_lgrep or fzf.live_grep or fzf.grep_project
-  if type(fn) == 'function' then
-    fn()
-    return true
+  if type(fn) ~= 'function' then
+    return false
   end
-  return false
+
+  -- 关掉预览窗口。
+  --
+  -- 原因：实时 grep 的预览区在实际使用中会出现「残留字符」（散落如星点），
+  -- 而且**放大窗口就消失、再输入再清空又出现** —— 那是重绘才能修好的显示残留。
+  -- 「下面的窗口」正是预览区，所以先把它去掉：界面干净，同时也能验证
+  -- 问题确实出在预览。
+  --
+  -- 代价：看不到匹配处的上下文。列表、选择、跳转、多选都不受影响；
+  -- 想看上下文时可以直接跳到结果里，或用 <leader>f* 那一套。
+  --
+  -- 如果去掉预览后残留字符仍在，说明问题不在预览，而在主窗口/遮罩层，
+  -- 那时要往别的方向查（而不是继续调预览）。
+  local ok2 = pcall(fn, { previewer = false })
+  if not ok2 then
+    -- 旧版 fzf-lua 若不接受该参数，退回默认行为，不要让搜索按键失效
+    pcall(fn)
+  end
+  return true
 end
 
 function M._setup_grepprg()
