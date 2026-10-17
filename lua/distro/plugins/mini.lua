@@ -121,6 +121,20 @@ return {
               group = vim.api.nvim_create_augroup('distro_starter_close', { clear = true }),
               callback = function()
                 if vim.bo.filetype == 'ministarter' then return end
+
+                -- 只在「真的进入了文件缓冲区」时才收起启动页。
+                --
+                -- 这里曾漏掉一类缓冲区，后果很显眼：在启动页上按 <leader>sG，
+                -- copen 先建出结果窗口并把光标挪进去 → BufEnter 触发 →
+                -- 启动页所在的编辑窗口被当成「多余窗口」关掉，最后只剩一个
+                -- 10 行的 quickfix 窗口，下面整屏空白（状态栏看起来「跑到
+                -- 屏幕上半部分」）。
+                --
+                -- 所以判据不能只排除 ministarter，还要排除所有非普通缓冲区：
+                -- buftype 非空（quickfix / nofile / terminal / prompt / help …）
+                -- 或者没有文件名（:enew 出来的暂存缓冲）。
+                if vim.bo.buftype ~= '' then return end
+                if vim.api.nvim_buf_get_name(0) == '' then return end
                 for _, b in ipairs(vim.api.nvim_list_bufs()) do
                   if vim.api.nvim_buf_is_valid(b) and vim.bo[b].filetype == 'ministarter' then
                     -- 先记下它所在的窗口：只删缓冲区会留一个空窗口，那和没删差不多
