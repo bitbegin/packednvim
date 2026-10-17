@@ -110,7 +110,7 @@ python tools/check-stack.py                                   # 校验方案里�
 
 ## 环境备注
 
-- **Neovim 已装好可直接用**：`D:\tools\nvim-win64\bin\nvim.exe`，`NVIM v0.13.0-dev-1828+g7e1ae5115f`，已在 PATH 上，敲 `nvim` 即是这一份。安装目录里的 `bin/nvim.pdb` 是 17.5 MB 调试符号，删掉不影响运行。
+- **Neovim 本体随包分发**：`runtime\bin\nvim.exe`（版本见包的 `VERSION`）。装好后 PATH 上的 `nvim` 就是包内这一份，**不需要在本机另装 Neovim**。旧笔记里那条 `D:\tools\nvim-win64\bin\nvim.exe` 是作者机器上的独立安装，与本发行版无关，已移除；`NVIM_EXE` 这个变量也一并废弃（读它的启动脚本已删除，现在没有代码读它）。
 - **nightly 是滚动标签**，每次重建都换 commit。`docs/ARCHITECTURE.md` 第 5 节讲过解析器 ABI 与 Neovim 版本强耦合，所以**每次更新 nightly 都要重跑解析器构建**，否则症状是「高亮突然全没了」而且不报错。
 - **git 代理已修正**为 `http://127.0.0.1:7892`，与系统代理一致，vendoring 可用。
 - 你的代理会间歇性拒绝 TLS 握手，也会中途断流，所以 `tools/fetch-tools.ps1` 用的是「限时重试 + 断点续传」，而不是 `curl --retry`（`--retry` 对「传输停滞」不生效）。

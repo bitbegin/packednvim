@@ -62,12 +62,22 @@ def find_nvim() -> str:
     env = os.environ.get("NVIM")
     if env and Path(env).is_file():
         return env
+
+    # 包内本体**优先于 PATH**：这份表描述的是「本发行版自带的 nvim」的实际键位，
+    # 用它自己的可执行文件 dump 才不会因为机器上另装的 nvim 版本不同而漂移。
+    for packaged in (
+        REPO_ROOT / "runtime" / "bin" / "nvim.exe",
+        REPO_ROOT / "runtime" / "bin" / "nvim",
+    ):
+        if packaged.is_file():
+            return str(packaged)
+
     found = shutil.which("nvim")
     if found:
         return found
+
     for candidate in (
         REPO_ROOT / "build" / "toolchain" / "nvim" / "bin" / "nvim.exe",
-        Path("D:/tools/nvim-win64/bin/nvim.exe"),
         Path("/usr/bin/nvim"),
         Path("/usr/local/bin/nvim"),
     ):

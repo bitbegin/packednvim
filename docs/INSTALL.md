@@ -131,18 +131,21 @@ nvim D:\code\main.py
 nvim +"lua vim.cmd('checkhealth distro')"
 ```
 
-**没跑安装脚本、也不想加 PATH 时**，直接调包内可执行文件，并用 `NVIM_EXE`
-指向包内的 nvim（下面这段讲的就是这个情形）：
+**没跑安装脚本、也不想加 PATH 时**：直接调包内的 nvim，并用 `-u` 指定配置。
+不需要任何环境变量（旧版的 `NVIM_EXE` 已经废弃 —— 那批读取它的启动脚本已被删除，
+现在没有代码读这个变量）。
 
 ```bat
-set NVIM_EXE=D:\tools\nvim-win64\bin\nvim.exe
-nvim
+D:\packednvim\runtime\bin\nvim.exe -u D:\packednvim\init.lua
 ```
 
 ```bash
-export NVIM_EXE=/opt/nvim/bin/nvim
-./nvim
+/opt/packednvim/runtime/bin/nvim -u /opt/packednvim/init.lua
 ```
+
+> 这种方式**没有** XDG 隔离：状态、会话与缓存会落到你系统默认的
+> `stdpath()` 下，可能与你机器上其它 Neovim 配置混在一起。日常用还是跑
+> `install.cmd`。
 
 ### 4. 验证安装
 
