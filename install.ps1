@@ -16,6 +16,7 @@
 param(
     [switch]$Uninstall,
     [switch]$Direct,
+    [switch]$Link,
     [string[]]$Ext = @('md', 'markdown')
 )
 
@@ -139,6 +140,14 @@ if ($Uninstall) {
     Remove-Item -LiteralPath 'HKCU:\Software\Classes\Applications\nvim.cmd' -Recurse -Force -ErrorAction SilentlyContinue
     Write-Step 'removed "Open with packednvim" and Applications\nvim.cmd'
 
+    if ($st.link -and (Test-Path -LiteralPath $st.link)) {
+        $li = Get-Item -LiteralPath $st.link -Force
+        if ($li.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            Remove-Item -LiteralPath $st.link -Force -ErrorAction SilentlyContinue
+            Write-Step "removed config link $($st.link)"
+        }
+    }
+
     Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
     Write-Host ''
     Write-Host '[OK] Uninstalled. Open a NEW terminal for the PATH change to take effect.'
@@ -190,6 +199,40 @@ if (($up -split ';') -contains $Bin) {
     Write-Step "added: $Bin"
 }
 
+# ---------------------------------------------------------------------------
+# Optional: make the distro the *standard* config dir, via a junction/symlink.
+# After this, a bare nvim.exe / neovide.exe (no -u, no env vars) loads this
+# distribution's init.lua, because nvim looks for its config at the standard
+# location:  %LOCALAPPDATA%\nvim  (Windows)  /  ~/.config/nvim  (Unix).
+# Junction (mklink /J) does not need admin rights.
+# ---------------------------------------------------------------------------
+$LinkPath = $null
+if ($Link) {
+    Write-Host '=== 1b. Linking the standard config directory ==='
+    $LinkPath = Join-Path $env:LOCALAPPDATA 'nvim'
+    $isLink = $false
+    if (Test-Path -LiteralPath $LinkPath) {
+        $it = Get-Item -LiteralPath $LinkPath -Force
+        if ($it.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { $isLink = $true }
+    }
+    if ($isLink) {
+        Write-Step "already a link: $LinkPath"
+    } else {
+        if (Test-Path -LiteralPath $LinkPath) {
+            $bak = $LinkPath + '.bak-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+            Rename-Item -LiteralPath $LinkPath -NewName (Split-Path $bak -Leaf)
+            Write-Step "existing config dir moved to $bak"
+        }
+        & cmd /c mklink /J "$LinkPath" "$Pkg" | Out-Null
+        if (Test-Path -LiteralPath (Join-Path $LinkPath 'init.lua')) {
+            Write-Step "junction created: $LinkPath -> $Pkg"
+        } else {
+            Write-Warning "junction creation failed for $LinkPath"
+            $LinkPath = $null
+        }
+    }
+}
+
 Write-Host '=== 2. File associations ==='
 $progIds = @()
 foreach ($e in $exts) {
@@ -225,6 +268,7 @@ New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
     exts         = $exts
     progids      = $progIds
     direct       = [bool]$Direct
+    link         = $LinkPath
 } | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
 Write-Step $StateFile
 
