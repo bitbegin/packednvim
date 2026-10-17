@@ -77,14 +77,14 @@ D:\packednvim\          （Windows 示例）
 解压后应该看到：
 
 ```
-init.lua          入口
-nvim          Windows 终端启动脚本
-nvim           Linux/macOS 启动脚本
-bin\neovide.exe       Windows 双击启动 GUI（无控制台窗口）
-bin\neovide.exe       Windows GUI 启动（终端里用，能看报错）
-neovide        Linux/macOS GUI 启动
-%APPDATA%\neovide\config.toml      随包的 GUI 外观配置（字体等）
+init.lua          配置入口
+install.cmd       安装（Windows，双击即可）
+install.ps1       安装脚本本体
+install.sh        安装（Linux / macOS）
+uninstall.cmd     卸载（Windows）
+uninstall.ps1 / uninstall.sh
 bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select / neovide）
+bin/neovide.toml  GUI 外观配置（初始窗口尺寸、字体与中文回退）
 lua/distro/       配置本体
 pack/distro/      插件：start/ 启动即加载，opt/ 按键才加载
 vendor/           lock.json（可复现凭证）+ treesitter/site/（本平台的 tree-sitter 解析器）
@@ -95,37 +95,46 @@ VERSION           这个包是什么、怎么来的
 
 ### 3. 启动
 
-**Windows（终端界面）**
+**Windows：先跑一次 `install.cmd`**（双击即可，不需要管理员权限）。它会：
+
+- 清掉下载标记（Mark of the Web），不再弹「无法验证发布者」
+- 建 `%LOCALAPPDATA%\nvim` → 本包的 junction（配置发现靠它）
+- 把 `<包>\bin` 与 `<包>\runtime\bin` 加进用户 PATH
+- 设用户级 `XDG_STATE_HOME` / `XDG_CACHE_HOME`（状态与会话留在包内）
+- 设 `NEOVIDE_CONFIG` 指向 `bin\neovide.toml`（GUI 外观跟着包走）
+- 注册 `.md` 等扩展名与「右键 → 打开方式」
+
+之后终端里直接敲：
 
 ```bat
-cd /d D:\packednvim
 nvim
 ```
 
-**Windows（图形界面）**
+**图形界面**：双击任意 `.md` 文件，或直接运行 `bin\neovide.exe`。
 
-双击任意已关联的文件（或直接运行 `bin\neovide.exe`）即打开 GUI 窗口；启动失败时 Neovide 会弹框给出退出码。
-要看详细报错就用 `bin\neovide.exe`（会有控制台窗口，错误直接打在里面）。
+`neovide.exe` 是图形程序，**本身不分配控制台窗口** —— 因此不需要
+`.cmd` / `.vbs` 之类的包装脚本来隐藏窗口（那些脚本已删除）。
 
-没有随包 Neovide 的平台（Linux arm64、macOS）请自行安装，再用同一批
-`neovide` 启动——启动器会负责 XDG 隔离。
+> 不跑安装脚本也能开 `bin\neovide.exe`，但上面那批变量都不存在：
+> 它可能去找 `%APPDATA%\nvim` 而不是包里这份配置，GUI 外观也回到 Neovide 默认。
 
 **Linux / macOS**
 
 ```bash
 cd /opt/packednvim
-chmod +x nvim        # 从 Windows 解压过来的话需要补可执行位
-./nvim
+chmod +x install.sh     # 从 Windows 解压过来的话需要补可执行位
+./install.sh            # 建链接、加 PATH、设 XDG_* 与 NEOVIDE_CONFIG
 ```
 
-打开文件、传参数都可以，脚本会把参数原样转给 Neovim：
+打开文件、传参数都可以，安装后 `nvim` 已在 PATH 上：
 
-```bat
+```bash
 nvim D:\code\main.py
 nvim +"lua vim.cmd('checkhealth distro')"
 ```
 
-**如果 Neovim 不在 PATH 上**，用 `NVIM_EXE` 指定：
+**没跑安装脚本、也不想加 PATH 时**，直接调包内可执行文件，并用 `NVIM_EXE`
+指向包内的 nvim（下面这段讲的就是这个情形）：
 
 ```bat
 set NVIM_EXE=D:\tools\nvim-win64\bin\nvim.exe
