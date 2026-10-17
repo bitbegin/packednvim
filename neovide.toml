@@ -9,27 +9,52 @@
 # 否则同一套设置的真相会被劈成两半，排查时非常难受。
 
 [font]
-# 字号。
 size = 13.0
 
-# 字体族用**数组表**形式逐个列出，第一个是主字体，后面的是回退。
+# ---------------------------------------------------------------------------
+# 字体：顺序即优先级，Neovide 取第一个能加载的作为主字体，
+# 后面的用于补前面缺的字形（CJK、图标）。
 #
-# 踩过的坑：不能同时写 `normal = ["..."]` 和 `[[font.normal]]` —— TOML 会报
-# `duplicate key`，Neovide 直接整份配置作废、退回默认（中文就成方块）。
-# 二者只能选一种写法；需要回退字体就必须全部用 `[[font.normal]]`。
+# 两个踩过的坑，都会导致「字与字之间有空隙」：
+#
+# 1) 列了本机不存在的字体。Neovide 只打一行 WARN
+#    「Some configured fonts could not be loaded and will be skipped」，
+#    然后静默退回内置字体 —— 表面看不出，实际字距全乱。
+#    查证方法：neovide --log，然后看日志里那行 WARN 列了哪些族名。
+#
+# 2) 中文回退用了**比例字体**（微软雅黑、Noto Sans SC 都是）。
+#    等宽网格里塞比例字形，宽度对不上，视觉上就是字之间多出空隙。
+#    所以中文优先放真正等宽的「新宋体」（NSimSun，其 CJK 宽度是 ASCII 的两倍）。
+#
+# 加到这里的每个族名，务必先用 `--log` 确认能加载，否则只会加噪音。
+# ---------------------------------------------------------------------------
+
+# 主字体：等宽 + Nerd Font 图标（本发行版图标强依赖 Nerd Font）
+[[font.normal]]
+family = "FiraCode Nerd Font Mono"
+
 [[font.normal]]
 family = "JetBrainsMono NFM"
 
-# 中文回退。按你机器上实际装了的排优先级即可，Neovide 会用第一个存在的。
-# 不配这一段，中文会显示成方块 —— Neovide 内置字体不含 CJK 字形。
 [[font.normal]]
 family = "JetBrainsMono Nerd Font"
 
+# 没有 Nerd Font 时的等宽兜底（Windows 11 / Windows 自带）
+[[font.normal]]
+family = "Cascadia Mono"
+
+[[font.normal]]
+family = "Consolas"
+
+# 中文回退：先等宽的，再退到比例字体
 [[font.normal]]
 family = "Sarasa Mono SC"
 
 [[font.normal]]
-family = "Microsoft YaHei"
+family = "新宋体"
+
+[[font.normal]]
+family = "Microsoft YaHei UI"
 
 [box-drawing]
 # 用字体自带字形画框线。Nerd Font / Sarasa 都自带，视觉上与终端一致；
