@@ -1,339 +1,248 @@
-# packednvim installer (Windows, per-user, no admin required)
+# packednvim installer / uninstaller (Windows, per-user, no admin rights)
 #
-# What it does
-#   * adds <package>\bin to the USER PATH   (nvim / rg / fzf / fd ... usable anywhere)
-#   * registers file associations for the extensions you pass in (-Ext), default md,markdown
-#   * adds a right-click "Open with packednvim" entry for every file type
-#   * registers the launcher as an application, so it shows up in "Open with"
+#   double-click install.cmd        -> install
+#   install.cmd /u                  -> uninstall
 #
-# Undo everything with:  install.cmd /u      (or: powershell -File install.ps1 -Uninstall)
+# What it sets up
+#   1. clears the "downloaded from the Internet" mark (Mark of the Web)
+#   2. %LOCALAPPDATA%\nvim  ->  this package      (junction; config discovery)
+#   3. <pkg>\bin on the user PATH                 (rg / fzf / fd / neovide ...)
+#   4. XDG_STATE_HOME + XDG_CACHE_HOME            (keeps state/cache in the package)
+#   5. file associations -> bin\neovide.exe "%1"  (GUI, no console, no .cmd/.vbs shim)
+#   6. "Open with packednvim" right-click entry
 #
-# Everything is per-user (HKCU + user environment). No admin rights, no system-wide changes.
-# Exactly what was added is recorded in .local\install-state.json, and -Uninstall removes
-# only those entries, so a later change you make by hand (e.g. picking another default app)
-# is not clobbered.
+# Design notes (learned the hard way)
+#   * NEVER write XDG_CONFIG_HOME: config discovery relies on %LOCALAPPDATA%\nvim.
+#     Pointing it at an empty dir makes init.lua unfindable and the distro stops
+#     loading entirely.
+#   * Write registry values with `reg add`, one argument per token. The
+#     Set-ItemProperty -Name '(default)' route silently creates a *named* value
+#     "(default)" that Explorer never reads.
+#   * Must run under Windows PowerShell 5.1: no `$x = if (...)`, no multi-line
+#     @() pipelines.
 
-param(
-    [switch]$Uninstall,
-    [switch]$NoLink,
-    [switch]$Launcher,
-    [string[]]$Ext = @('md', 'markdown')
-)
+param([switch]$Uninstall)
 
 $ErrorActionPreference = 'Stop'
 
-$Pkg       = $PSScriptRoot
-$Bin       = Join-Path $Pkg 'bin'
-$NvimCmd   = Join-Path $Pkg 'nvim.cmd'
-$StateDir  = Join-Path $Pkg '.local'
-$StateFile = Join-Path $StateDir 'install-state.json'
+$Pkg        = $PSScriptRoot
+$Bin        = $Pkg + '\bin'
+$NvimExe    = $Pkg + '\runtime\bin\nvim.exe'
+$NeovideExe = $Pkg + '\bin\neovide.exe'
+$StateDir   = $Pkg + '\.local'
+$StateFile  = $StateDir + '\install-state.json'
 
-# "cmd /c "<pkg>\nvim.cmd" "%1""
-# 两种关联方式：
-#  默认（经 nvim.cmd）—— 命令行能带环境变量，XDG/TMPDIR 全部隔离在包内
-#  -Direct（直接调 exe）—— 没有 .cmd，双击即可；但注册表只能传参数、传不了
-#    环境变量，所以状态目录会落到系统默认位置（%LOCALAPPDATA%\nvim-data 等）。
-#    配置本身仍然正确：-u 明确指向本发行版的 init.lua。
-#    GUI 优先用 neovide.exe（无控制台窗口），没有则退回终端 nvim.exe。
-$NvimExe    = Join-Path $Pkg 'runtime\bin\nvim.exe'
-$NeovideExe = Join-Path $Pkg 'bin\neovide.exe'
-$InitLua    = Join-Path $Pkg 'init.lua'
-# 注意：不要写 `$x = if (...) {...} else {...}`、也不要写多行 @() 管道 ——
-# 这套 install.ps1 要在 Windows PowerShell 5.1 下运行（powershell.exe），
-# 那些写法 5.1 会报 "Unexpected token ')'"。老老实实用语句块。
-$DirectLine = '"' + $NvimExe + '" -u "' + $InitLua + '" "%1"'
-if (Test-Path -LiteralPath $NeovideExe) {
-    $DirectLine = '"' + $NeovideExe + '" -- -u "' + $InitLua + '" "%1"'
+$LocalApp   = [Environment]::GetFolderPath('LocalApplicationData')
+if (-not $LocalApp) { $LocalApp = $env:LOCALAPPDATA }
+$LinkPath   = $LocalApp + '\nvim'
+$StateHome  = $LinkPath + '\.local\state'
+$CacheHome  = $LinkPath + '\.local\cache'
+$LogDir     = $LocalApp + '\nvim-data\logs'
+
+$Handler = $NvimExe
+if (Test-Path -LiteralPath $NeovideExe) { $Handler = $NeovideExe }
+$CmdLine = '"' + $Handler + '" "%1"'
+
+$Exts = @('md', 'markdown', 'txt')
+
+function Say([string]$m) { Write-Host ('  ' + $m) }
+
+function GetRegDefault([string]$sub) {
+    $k = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($sub)
+    if (-not $k) { return $null }
+    $v = $k.GetValue('')
+    $k.Close()
+    return $v
 }
 
-# 默认：关联直接指向 exe（配合下面的 -Link，连 -u 都不需要也能工作；
-# 这里仍带上 -u，避免用户手动删掉链接后配置失效）。
-# -Launcher 时才退回经 nvim.cmd 的方式（完整 XDG 隔离）。
-$CmdLine = $DirectLine
-if ($Launcher) { $CmdLine = 'cmd /c "' + $NvimCmd + '" "%1"' }
-Write-Host ("  association command: " + $CmdLine)
-
-function Write-Step($msg) { Write-Host "  $msg" }
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-function Get-UserPath {
-    [Environment]::GetEnvironmentVariable('Path', 'User')
+function RegSetDefault([string]$sub, [string]$value) {
+    & reg add ('HKCU\' + $sub) /ve /d $value /f | Out-Null
+    if ((GetRegDefault $sub) -ne $value) { Write-Warning ('registry write failed: ' + $sub) }
 }
 
-function Set-UserPath([string]$value) {
-    [Environment]::SetEnvironmentVariable('Path', $value, 'User')
+function RegSetString([string]$sub, [string]$name, [string]$value) {
+    & reg add ('HKCU\' + $sub) /v $name /d $value /f | Out-Null
 }
 
-function ConvertTo-RegSubKey([string]$key) {
-    $key -replace '^HKCU:\\', '' -replace '^HKEY_CURRENT_USER\\', ''
+function RemoveReg([string]$sub) {
+    Remove-Item -LiteralPath ('HKCU:\' + $sub) -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-function Set-Default([string]$key, [string]$value) {
-    if (-not (Test-Path -LiteralPath $key)) { New-Item -Path $key -Force | Out-Null }
-    # 不要用 Set-ItemProperty -Name '(default)'：实测它建出的是**名为 "(default)"
-    # 的普通值**，而不是真正的默认值，Explorer 因此完全看不到这个关联
-    # （症状：双击仍打开别的程序、assoc .md 查不到）。用 .NET 写空名值才对。
-    $sub = ConvertTo-RegSubKey $key
-    $reg = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($sub)
-    $reg.SetValue('', $value, [Microsoft.Win32.RegistryValueKind]::String)
-    $reg.Close()
+function GetUserPath { [Environment]::GetEnvironmentVariable('Path', 'User') }
+function SetUserPath([string]$v) { [Environment]::SetEnvironmentVariable('Path', $v, 'User') }
+
+function IsReparsePoint([string]$p) {
+    if (-not (Test-Path -LiteralPath $p)) { return $false }
+    $item = Get-Item -LiteralPath $p -Force
+    return [bool]($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
 }
 
-function Set-Prop([string]$key, [string]$name, [string]$value) {
-    if (-not (Test-Path -LiteralPath $key)) { New-Item -Path $key -Force | Out-Null }
-    New-ItemProperty -LiteralPath $key -Name $name -Value $value -PropertyType String -Force | Out-Null
-}
-
-function Get-Default([string]$key) {
-    $reg = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey((ConvertTo-RegSubKey $key))
-    if (-not $reg) { return $null }
-    $v = $reg.GetValue('')
-    $reg.Close()
-    $v
-}
-
-# ---------------------------------------------------------------------------
-# Uninstall
-# ---------------------------------------------------------------------------
 if ($Uninstall) {
     if (-not (Test-Path -LiteralPath $StateFile)) {
-        Write-Host "Nothing to uninstall: $StateFile not found."
-        Write-Host "Run install.cmd first, or remove the entries by hand."
+        Write-Host ('Nothing to uninstall (' + $StateFile + ' not found).')
         exit 0
     }
     $st = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
 
-    Write-Host '=== Removing PATH entry ==='
-    $up = Get-UserPath
+    Write-Host '=== PATH ==='
+    $up = GetUserPath
     if ($up) {
-        $parts = @($up -split ';' | Where-Object { $_ -and $_ -ne $st.path })
-        Set-UserPath ($parts -join ';')
-        Write-Step "removed $($st.path)"
+        $parts = @()
+        foreach ($p in ($up -split ';')) { if ($p -and $p -ne $st.path) { $parts += $p } }
+        SetUserPath ($parts -join ';')
+        Say ('removed ' + $st.path)
     }
 
-    Write-Host '=== Removing associations ==='
+    Write-Host '=== environment variables ==='
+    foreach ($pair in @(@('XDG_STATE_HOME', $st.xdg_state, $st.xdg_state_prev), @('XDG_CACHE_HOME', $st.xdg_cache, $st.xdg_cache_prev))) {
+        $name = $pair[0]
+        $cur  = [Environment]::GetEnvironmentVariable($name, 'User')
+        if ($cur -eq $pair[1]) {
+            if ($pair[2]) { [Environment]::SetEnvironmentVariable($name, $pair[2], 'User') }
+            else { [Environment]::SetEnvironmentVariable($name, $null, 'User') }
+            Say ('restored ' + $name)
+        }
+    }
+
+    Write-Host '=== associations ==='
     foreach ($p in @($st.progids)) {
-        if ($p) { Remove-Item -LiteralPath (Join-Path 'HKCU:\Software\Classes' $p) -Recurse -Force -ErrorAction SilentlyContinue; Write-Step "removed ProgID $p" }
+        if ($p) { RemoveReg ('Software\Classes\' + $p); Say ('removed ProgID ' + $p) }
     }
     foreach ($e in @($st.exts)) {
-        $extKey = Join-Path 'HKCU:\Software\Classes' ".$e"
-        # only drop the default value if it still points at us
-        if ($e -and (Get-Default $extKey) -like 'packednvim*') {
-            # Remove-ItemProperty -Name '(default)' 与 reg delete /ve 在实测里
-            # 都出现过「命令不报错但默认值仍在」。直接用 .NET 注册表 API 删
-            # 默认值（名称为空串），并用回读校验，避免又一次假成功。
-            $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Software\Classes\.$e", $true)
-            if ($key) {
-                try { $key.DeleteValue('', $false) } catch { }
-                $key.Close()
-            }
-            if (Get-Default $extKey) { Write-Warning "could not clear the default value of .$e" }
-            Write-Step "removed default handler for .$e"
+        $extKey = 'Software\Classes\.' + $e
+        if ((GetRegDefault $extKey) -like 'packednvim*') {
+            & reg delete ('HKCU\' + $extKey) /ve /f 2>&1 | Out-Null
+            Say ('cleared default for .' + $e)
         }
-        $owp = Join-Path $extKey 'OpenWithProgids'
-        if (Test-Path -LiteralPath $owp) {
-            Remove-ItemProperty -LiteralPath $owp -Name "packednvim.$e" -Force -ErrorAction SilentlyContinue
-            Write-Step "removed .$e from OpenWithProgids"
-        }
+        Remove-ItemProperty -LiteralPath ('HKCU:\' + $extKey + '\OpenWithProgids') -Name ('packednvim.' + $e) -Force -ErrorAction SilentlyContinue
     }
+    RemoveReg 'Software\Classes\*\shell\packednvim'
+    Say 'removed right-click entry'
+    RemoveReg 'Software\Classes\Applications\neovide.exe'
+    RemoveReg 'Software\Classes\Applications\nvim.exe'
+    Say 'removed application registrations'
 
-    Write-Host '=== Removing right-click entry and application registration ==='
-    Remove-Item -LiteralPath 'HKCU:\Software\Classes\*\shell\packednvim' -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath 'HKCU:\Software\Classes\Applications\nvim.cmd' -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Step 'removed "Open with packednvim" and Applications\nvim.cmd'
-
-    if ($st.link -and (Test-Path -LiteralPath $st.link)) {
-        $li = Get-Item -LiteralPath $st.link -Force
-        if ($li.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-            Remove-Item -LiteralPath $st.link -Force -ErrorAction SilentlyContinue
-            Write-Step "removed config link $($st.link)"
-        }
-    }
-
-    Write-Host '=== Removing environment variables ==='
-    foreach ($pair in @(@('XDG_STATE_HOME', $st.xdg_state, $st.xdg_state_prev), @('XDG_CACHE_HOME', $st.xdg_cache, $st.xdg_cache_prev))) {
-        $name = $pair[0]; $cur = [Environment]::GetEnvironmentVariable($name, 'User')
-        if ($cur -eq $pair[1]) {
-            if ($pair[2]) { [Environment]::SetEnvironmentVariable($name, $pair[2], 'User') } else { [Environment]::SetEnvironmentVariable($name, $null, 'User') }
-            Write-Step "restored $name"
-        }
+    Write-Host '=== config link ==='
+    if ($st.link -and (IsReparsePoint $st.link)) {
+        Remove-Item -LiteralPath $st.link -Force -ErrorAction SilentlyContinue
+        Say ('removed link ' + $st.link)
     }
 
     Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
     Write-Host ''
-    Write-Host '[OK] Uninstalled. Open a NEW terminal for the PATH change to take effect.'
+    Write-Host '[OK] Uninstalled. Open a NEW terminal for PATH changes to apply.'
     exit 0
 }
 
-# ---------------------------------------------------------------------------
-# Install
-# ---------------------------------------------------------------------------
-if (-not (Test-Path -LiteralPath $NvimCmd)) {
-    Write-Error "nvim.cmd not found next to install.ps1: $NvimCmd"
+if (-not (Test-Path -LiteralPath $Handler)) {
+    Write-Error ('neovide.exe / nvim.exe not found under ' + $Pkg)
     exit 1
 }
 
-# -File 调用时 "-Ext md,txt" 会作为**一个**字符串传进来，必须再按逗号切开；
-# 否则会建出 "packednvim.md,txt" 这种不存在的扩展名（实测踩到）。
-$exts = @()
-foreach ($item in $Ext) {
-    $parts = $item -split ','
-    foreach ($part in $parts) {
-        $p = $part.Trim().TrimStart('.')
-        if ($p) { $exts += $p }
-    }
-}
-if ($exts.Count -eq 0) { $exts = @('md', 'markdown') }
-
-Write-Host "=== packednvim installer ==="
-Write-Host "  package: $Pkg"
-Write-Host "  ext:     $($exts -join ', ')"
+Write-Host '=== packednvim installer ==='
+Say ('package : ' + $Pkg)
+Say ('handler : ' + $Handler)
 Write-Host ''
 
-Write-Host '=== 0. Clearing the network mark (Mark of the Web) ==='
-# Downloaded zips carry Zone.Identifier, which makes Windows warn that the
-# publisher cannot be verified (and SmartScreen block nvim.exe on first run).
-# Doing it here means one command both unblocks and installs.
-$unblocked = 0
-foreach ($file in Get-ChildItem -LiteralPath $Pkg -Recurse -File -ErrorAction SilentlyContinue) {
-    try { Unblock-File -LiteralPath $file.FullName -ErrorAction Stop; $unblocked++ } catch { }
+Write-Host '=== 0. network mark (Mark of the Web) ==='
+# 只处理真正带 Zone.Identifier 的文件，并只扫可执行/脚本类 —— 对整个包
+# 13000+ 文件逐个 Unblock-File 会跑好几分钟（踩过：装一次卡七分钟）。
+$patterns = @('*.exe', '*.dll', '*.cmd', '*.bat', '*.ps1', '*.sh', '*.vbs', '*.toml', '*.lua')
+$n = 0
+foreach ($pat in $patterns) {
+    foreach ($f in (Get-ChildItem -LiteralPath $Pkg -Recurse -File -Filter $pat -ErrorAction SilentlyContinue)) {
+        try {
+            $streams = Get-Item -LiteralPath $f.FullName -Stream Zone.Identifier -ErrorAction Stop
+            if ($streams) { Unblock-File -LiteralPath $f.FullName; $n = $n + 1 }
+        } catch { }
+    }
 }
-Write-Step "processed $unblocked files (no-op for files that had no mark)"
+Say ('unblocked ' + $n + ' files')
 
-# Neovim 在读取 init.lua **之前**就决定了日志路径（默认
-# %LOCALAPPDATA%\nvim-data\logs）。那个目录不存在时会打印
-#   log: "..." not accessible, logging to: "nvim.log"
-# 并在启动时拦一下回车。这里顺手建目录，只为消掉这条无害警告；
-# 配置与运行期状态仍然全部在包内 .local（见 init.lua 顶部）。
-$nvimLogDir = Join-Path $env:LOCALAPPDATA 'nvim-data\logs'
-if (-not (Test-Path -LiteralPath $nvimLogDir)) {
-    New-Item -ItemType Directory -Force -Path $nvimLogDir | Out-Null
-    Write-Host "  created $nvimLogDir (silences the startup log warning)"
+Write-Host '=== 1. standard config dir (junction) ==='
+if (IsReparsePoint $LinkPath) {
+    Say ('already a link: ' + $LinkPath)
+} else {
+    if (Test-Path -LiteralPath $LinkPath) {
+        $bak = $LinkPath + '.bak-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+        Rename-Item -LiteralPath $LinkPath -NewName (Split-Path $bak -Leaf)
+        Say ('existing config moved to ' + $bak)
+    }
+    & cmd /c mklink /J "$LinkPath" "$Pkg" | Out-Null
+    if (Test-Path -LiteralPath ($LinkPath + '\init.lua')) { Say ('junction: ' + $LinkPath + ' -> ' + $Pkg) }
+    else { Write-Warning 'junction creation failed' }
 }
 
-# ---------------------------------------------------------------------------
-# 用户级环境变量：只为让「纯 exe 启动」不再打日志警告。
-# Neovim 在读取 init.lua 之前就决定了日志路径（stdpath('state')/logs），
-# 那个默认目录在部分机器上建不出来，于是启动时拦一下回车。
-#
-# 只设 STATE 与 CACHE —— **绝不设 XDG_CONFIG_HOME**：配置的发现依赖
-# %LOCALAPPDATA%\nvim（junction 或系统默认），把它改到包内空目录会导致
-# init.lua 根本找不到（那样发行版就完全不加载了）。
-# ---------------------------------------------------------------------------
-$envState = Join-Path $Pkg '.local\state'
-$envCache = Join-Path $Pkg '.local\cache'
-foreach ($d in @($envState, $envCache)) {
+Write-Host '=== 2. user PATH ==='
+$up = GetUserPath
+$has = $false
+foreach ($p in ($up -split ';')) { if ($p -eq $Bin) { $has = $true } }
+if ($has) {
+    Say ('already present: ' + $Bin)
+} else {
+    if ($up) { SetUserPath ($Bin + ';' + $up) } else { SetUserPath $Bin }
+    Say ('added: ' + $Bin)
+}
+
+Write-Host '=== 3. environment variables ==='
+foreach ($d in @($StateHome, $CacheHome, $LogDir)) {
     if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 }
 $prevState = [Environment]::GetEnvironmentVariable('XDG_STATE_HOME', 'User')
 $prevCache = [Environment]::GetEnvironmentVariable('XDG_CACHE_HOME', 'User')
-[Environment]::SetEnvironmentVariable('XDG_STATE_HOME', $envState, 'User')
-[Environment]::SetEnvironmentVariable('XDG_CACHE_HOME', $envCache, 'User')
-Write-Step "XDG_STATE_HOME -> $envState"
-Write-Step "XDG_CACHE_HOME -> $envCache"
+[Environment]::SetEnvironmentVariable('XDG_STATE_HOME', $StateHome, 'User')
+[Environment]::SetEnvironmentVariable('XDG_CACHE_HOME', $CacheHome, 'User')
+Say ('XDG_STATE_HOME -> ' + $StateHome)
+Say ('XDG_CACHE_HOME -> ' + $CacheHome)
 
-Write-Host '=== 1. User PATH ==='
-$up = Get-UserPath
-if (($up -split ';') -contains $Bin) {
-    Write-Step "already present: $Bin"
-} else {
-    $new = if ($up) { $Bin + ';' + $up } else { $Bin }
-    Set-UserPath $new
-    Write-Step "added: $Bin"
-}
-
-# ---------------------------------------------------------------------------
-# Optional: make the distro the *standard* config dir, via a junction/symlink.
-# After this, a bare nvim.exe / neovide.exe (no -u, no env vars) loads this
-# distribution's init.lua, because nvim looks for its config at the standard
-# location:  %LOCALAPPDATA%\nvim  (Windows)  /  ~/.config/nvim  (Unix).
-# Junction (mklink /J) does not need admin rights.
-# ---------------------------------------------------------------------------
-$LinkPath = $null
-if (-not $NoLink) {
-    Write-Host '=== 1b. Linking the standard config directory ==='
-    $LinkPath = Join-Path $env:LOCALAPPDATA 'nvim'
-    $isLink = $false
-    if (Test-Path -LiteralPath $LinkPath) {
-        $it = Get-Item -LiteralPath $LinkPath -Force
-        if ($it.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { $isLink = $true }
-    }
-    if ($isLink) {
-        Write-Step "already a link: $LinkPath"
-    } else {
-        if (Test-Path -LiteralPath $LinkPath) {
-            $bak = $LinkPath + '.bak-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
-            Rename-Item -LiteralPath $LinkPath -NewName (Split-Path $bak -Leaf)
-            Write-Step "existing config dir moved to $bak"
-        }
-        & cmd /c mklink /J "$LinkPath" "$Pkg" | Out-Null
-        if (Test-Path -LiteralPath (Join-Path $LinkPath 'init.lua')) {
-            Write-Step "junction created: $LinkPath -> $Pkg"
-        } else {
-            Write-Warning "junction creation failed for $LinkPath"
-            $LinkPath = $null
-        }
-    }
-}
-
-Write-Host '=== 2. File associations ==='
+Write-Host '=== 4. file associations ==='
 $progIds = @()
-foreach ($e in $exts) {
-    $progId = "packednvim.$e"
+foreach ($e in $Exts) {
+    $progId = 'packednvim.' + $e
     $progIds += $progId
-    $root = Join-Path 'HKCU:\Software\Classes' $progId
-    Set-Default $root "$e (packednvim)"
-    Set-Default (Join-Path $root 'shell\open\command') $CmdLine
-    $chk = Get-Default (Join-Path $root 'shell\open\command')
-    if (-not $chk) { Write-Warning "write verification FAILED for $progId command (value is empty)" }
-    $extKey = Join-Path 'HKCU:\Software\Classes' ".$e"
-    Set-Default $extKey $progId
-    Set-Prop (Join-Path $extKey 'OpenWithProgids') $progId ''
-    Write-Step ".$e -> $progId"
+    RegSetDefault ('Software\Classes\' + $progId) ($e + ' (packednvim)')
+    RegSetDefault ('Software\Classes\' + $progId + '\shell\open\command') $CmdLine
+    RegSetDefault ('Software\Classes\.' + $e) $progId
+    RegSetString ('Software\Classes\.' + $e + '\OpenWithProgids') $progId ''
+    Say ('.' + $e + ' -> ' + $progId)
 }
 
-Write-Host '=== 3. Right-click entry (all file types) ==='
-Set-Default 'HKCU:\Software\Classes\*\shell\packednvim' 'Open with packednvim'
-Set-Default 'HKCU:\Software\Classes\*\shell\packednvim\command' $CmdLine
-Write-Step 'added "Open with packednvim"'
+Write-Host '=== 5. right-click entry ==='
+RegSetDefault 'Software\Classes\*\shell\packednvim' 'Open with packednvim'
+RegSetDefault 'Software\Classes\*\shell\packednvim\command' $CmdLine
+Say 'added "Open with packednvim"'
 
-Write-Host '=== 4. Application registration (so it appears in "Open with") ==='
-$app = 'HKCU:\Software\Classes\Applications\nvim.cmd'
-Set-Default (Join-Path $app 'shell\open\command') $CmdLine
-Set-Prop $app 'FriendlyAppName' 'packednvim (Neovim)'
-foreach ($e in $exts) { Set-Prop (Join-Path $app 'SupportedTypes') ".$e" '' }
-Write-Step 'registered as "packednvim (Neovim)"'
+Write-Host '=== 6. application registrations (visible in "Open with") ==='
+RegSetDefault 'Software\Classes\Applications\neovide.exe\shell\open\command' ('"' + $NeovideExe + '" "%1"')
+RegSetString 'Software\Classes\Applications\neovide.exe' 'FriendlyAppName' 'Neovide (packednvim)'
+foreach ($e in $Exts) { RegSetString 'Software\Classes\Applications\neovide.exe\SupportedTypes' ('.' + $e) '' }
+Say 'registered Neovide (packednvim)'
 
-Write-Host '=== 5. Recording state for -Uninstall ==='
-New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
-[ordered]@{
-    installed_at = (Get-Date).ToString('s')
-    package      = $Pkg
-    path         = $Bin
-    exts         = $exts
-    progids      = $progIds
-    launcher     = [bool]$Launcher
-    xdg_state    = $envState
-    xdg_cache    = $envCache
-    xdg_state_prev = $prevState
-    xdg_cache_prev = $prevCache
-    link         = $LinkPath
-} | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
-Write-Step $StateFile
+RegSetDefault 'Software\Classes\Applications\nvim.exe\shell\open\command' ('"' + $NvimExe + '" "%1"')
+RegSetString 'Software\Classes\Applications\nvim.exe' 'FriendlyAppName' 'Neovim (packednvim, console)'
+foreach ($e in $Exts) { RegSetString 'Software\Classes\Applications\nvim.exe\SupportedTypes' ('.' + $e) '' }
+Say 'registered Neovim (packednvim, console)'
+
+Write-Host '=== 7. state (for /u) ==='
+if (-not (Test-Path -LiteralPath $StateDir)) { New-Item -ItemType Directory -Force -Path $StateDir | Out-Null }
+$state = [ordered]@{}
+$state['installed_at'] = (Get-Date).ToString('s')
+$state['package'] = $Pkg
+$state['path'] = $Bin
+$state['link'] = $LinkPath
+$state['exts'] = $Exts
+$state['progids'] = $progIds
+$state['handler'] = $Handler
+$state['xdg_state'] = $StateHome
+$state['xdg_cache'] = $CacheHome
+$state['xdg_state_prev'] = $prevState
+$state['xdg_cache_prev'] = $prevCache
+$state | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
+Say $StateFile
 
 Write-Host ''
 Write-Host '[OK] Installed.'
-Write-Host '     * PATH: open a NEW terminal, then "nvim" works from anywhere.'
-if ($Direct) {
-    Write-Host '     * Mode: -Direct (no .cmd). Associations call neovide.exe/nvim.exe'
-    Write-Host '       directly with -u <pkg>\init.lua; runtime state goes to the'
-    Write-Host '       default %LOCALAPPDATA%\nvim-data.'
-} else {
-    Write-Host '     * Mode: launcher (.cmd). Full XDG/TMPDIR isolation inside the package.'
-}
-Write-Host '     * Double-click may still ask once which app to use: pick'
-Write-Host '       "packednvim (Neovim)" and tick "Always". Windows stores that'
-Write-Host '       choice in a hash-protected key that only the dialog may write.'
-Write-Host '     * Undo everything:  install.cmd /u'
+Write-Host '     * open a NEW terminal (or restart Explorer) so PATH/env are visible'
+Write-Host '     * double-click .md -> Neovide window, no console, no log warning'
+Write-Host '     * if Windows asks once, pick "Neovide (packednvim)" and tick Always'
+Write-Host '     * undo everything:  install.cmd /u'
