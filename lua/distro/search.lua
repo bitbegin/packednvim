@@ -28,7 +28,7 @@ local active_proc = nil
 -- 传给 rg 的固定参数
 local RG_OPTS = {
   '--vimgrep',
-  '--no-heading',
+  '--no-messages', '--no-heading',
   '--with-filename',
   '--smart-case',
   '--hidden',
