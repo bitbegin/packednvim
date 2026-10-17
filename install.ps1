@@ -1,4 +1,4 @@
-# packednvim installer / uninstaller (Windows, per-user, no admin rights)
+﻿# packednvim installer / uninstaller (Windows, per-user, no admin rights)
 #
 #   double-click install.cmd        -> install
 #   install.cmd /u                  -> uninstall
