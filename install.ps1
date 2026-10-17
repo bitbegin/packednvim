@@ -15,8 +15,8 @@
 
 param(
     [switch]$Uninstall,
-    [switch]$Direct,
-    [switch]$Link,
+    [switch]$NoLink,
+    [switch]$Launcher,
     [string[]]$Ext = @('md', 'markdown')
 )
 
@@ -46,8 +46,12 @@ if (Test-Path -LiteralPath $NeovideExe) {
     $DirectLine = '"' + $NeovideExe + '" -- -u "' + $InitLua + '" "%1"'
 }
 
-$CmdLine = 'cmd /c "' + $NvimCmd + '" "%1"'
-if ($Direct) { $CmdLine = $DirectLine }
+# 默认：关联直接指向 exe（配合下面的 -Link，连 -u 都不需要也能工作；
+# 这里仍带上 -u，避免用户手动删掉链接后配置失效）。
+# -Launcher 时才退回经 nvim.cmd 的方式（完整 XDG 隔离）。
+$CmdLine = $DirectLine
+if ($Launcher) { $CmdLine = 'cmd /c "' + $NvimCmd + '" "%1"' }
+Write-Host ("  association command: " + $CmdLine)
 
 function Write-Step($msg) { Write-Host "  $msg" }
 
@@ -207,7 +211,7 @@ if (($up -split ';') -contains $Bin) {
 # Junction (mklink /J) does not need admin rights.
 # ---------------------------------------------------------------------------
 $LinkPath = $null
-if ($Link) {
+if (-not $NoLink) {
     Write-Host '=== 1b. Linking the standard config directory ==='
     $LinkPath = Join-Path $env:LOCALAPPDATA 'nvim'
     $isLink = $false
@@ -241,6 +245,8 @@ foreach ($e in $exts) {
     $root = Join-Path 'HKCU:\Software\Classes' $progId
     Set-Default $root "$e (packednvim)"
     Set-Default (Join-Path $root 'shell\open\command') $CmdLine
+    $chk = Get-Default (Join-Path $root 'shell\open\command')
+    if (-not $chk) { Write-Warning "write verification FAILED for $progId command (value is empty)" }
     $extKey = Join-Path 'HKCU:\Software\Classes' ".$e"
     Set-Default $extKey $progId
     Set-Prop (Join-Path $extKey 'OpenWithProgids') $progId ''
@@ -267,7 +273,7 @@ New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
     path         = $Bin
     exts         = $exts
     progids      = $progIds
-    direct       = [bool]$Direct
+    launcher     = [bool]$Launcher
     link         = $LinkPath
 } | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
 Write-Step $StateFile
