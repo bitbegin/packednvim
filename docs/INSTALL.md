@@ -190,6 +190,15 @@ install.cmd /u
 | 自定义扩展名 | `install.cmd md txt json` | `./install.sh md txt json` |
 | 撤销 | `install.cmd /u` | `./install.sh --uninstall` |
 
+**想彻底不用 `.cmd`（直接指向 exe）**：加 `-Direct` 参数
+（`powershell -File install.ps1 -Direct -Ext md,txt`）。关联命令变成
+`"<包>\bin\neovide.exe" -- -u "<包>\init.lua" "%1"`（没有 GUI 则退回终端
+`nvim.exe`），双击直接出窗口、不经过任何批处理文件。
+
+代价只有一个：注册表只能传**参数**、传不了**环境变量**，所以 XDG / TMPDIR
+那套隔离不生效，运行期状态（undo、shada、byte-code 缓存）落到系统默认位置
+（`%LOCALAPPDATA%\nvim-data`）。配置本身仍正确，因为 `-u` 明确指向本发行版
+的 `init.lua`。要完整隔离就用默认模式（经 `nvim.cmd`）。
 **关于「双击 .md 仍然问一次用哪个程序」**：这是 Windows 的设计，不是脚本没写好。
 最终生效的默认程序由 `UserChoice` 决定，而这个键带哈希校验，**只有系统对话框
 能合法写入**；脚本能做的是把本发行版注册进「打开方式」列表。在对话框里选一次

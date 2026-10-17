@@ -15,6 +15,7 @@
 
 param(
     [switch]$Uninstall,
+    [switch]$Direct,
     [string[]]$Ext = @('md', 'markdown')
 )
 
@@ -27,7 +28,22 @@ $StateDir  = Join-Path $Pkg '.local'
 $StateFile = Join-Path $StateDir 'install-state.json'
 
 # "cmd /c "<pkg>\nvim.cmd" "%1""
-$CmdLine = 'cmd /c "' + $NvimCmd + '" "%1"'
+# 两种关联方式：
+#  默认（经 nvim.cmd）—— 命令行能带环境变量，XDG/TMPDIR 全部隔离在包内
+#  -Direct（直接调 exe）—— 没有 .cmd，双击即可；但注册表只能传参数、传不了
+#    环境变量，所以状态目录会落到系统默认位置（%LOCALAPPDATA%\nvim-data 等）。
+#    配置本身仍然正确：-u 明确指向本发行版的 init.lua。
+#    GUI 优先用 neovide.exe（无控制台窗口），没有则退回终端 nvim.exe。
+$NvimExe    = Join-Path $Pkg 'runtime\bin\nvim.exe'
+$NeovideExe = Join-Path $Pkg 'bin\neovide.exe'
+$InitLua    = Join-Path $Pkg 'init.lua'
+$DirectLine = if (Test-Path -LiteralPath $NeovideExe) {
+    '"' + $NeovideExe + '" -- -u "' + $InitLua + '" "%1"'
+} else {
+    '"' + $NvimExe + '" -u "' + $InitLua + '" "%1"'
+}
+
+$CmdLine = if ($Direct) { $DirectLine } else { 'cmd /c "' + $NvimCmd + '" "%1"' }
 
 function Write-Step($msg) { Write-Host "  $msg" }
 
@@ -196,12 +212,20 @@ New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
     path         = $Bin
     exts         = $exts
     progids      = $progIds
+    direct       = [bool]$Direct
 } | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
 Write-Step $StateFile
 
 Write-Host ''
 Write-Host '[OK] Installed.'
 Write-Host '     * PATH: open a NEW terminal, then "nvim" works from anywhere.'
+if ($Direct) {
+    Write-Host '     * Mode: -Direct (no .cmd). Associations call neovide.exe/nvim.exe'
+    Write-Host '       directly with -u <pkg>\init.lua; runtime state goes to the'
+    Write-Host '       default %LOCALAPPDATA%\nvim-data.'
+} else {
+    Write-Host '     * Mode: launcher (.cmd). Full XDG/TMPDIR isolation inside the package.'
+}
 Write-Host '     * Double-click may still ask once which app to use: pick'
 Write-Host '       "packednvim (Neovim)" and tick "Always". Windows stores that'
 Write-Host '       choice in a hash-protected key that only the dialog may write.'
