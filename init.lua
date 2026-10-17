@@ -15,6 +15,33 @@
 
 local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h')
 
+-- ---------------------------------------------------------------------------
+-- 运行期目录：等价于 nvim.cmd 里那几行 set，但**必须放在这里**。
+--
+-- 为什么不能只靠启动脚本：经 junction（%LOCALAPPDATA%\nvim -> 包目录）、
+-- 双击、或直接调 exe 时，进程环境里没有 XDG_* / TMPDIR，Neovim 会试着把
+-- 字节码缓存写到 %TEMP%\nvim\luac，失败时插件加载直接抛
+--   E5113: EPERM ... luac
+-- 表现就是「打开文件弹一堆 Error in .../plugin/xxx.lua」。
+--
+-- 放在 init.lua 最前面，任何启动方式都能自洽；nvim.cmd 里同样的设置保留，
+-- 二者互为兜底（脚本先设好，这里再设一次是幂等的）。
+-- ---------------------------------------------------------------------------
+do
+    local function dir(rel)
+        local p = root .. '/.local/' .. rel
+        if vim.fn.isdirectory(p) == 0 then pcall(vim.fn.mkdir, p, 'p') end
+        return p
+    end
+    vim.env.XDG_CONFIG_HOME = dir('config')
+    vim.env.XDG_DATA_HOME = dir('data')
+    vim.env.XDG_STATE_HOME = dir('state')
+    vim.env.XDG_CACHE_HOME = dir('cache')
+    vim.env.TMPDIR = dir('tmp')
+    vim.env.TMP = vim.env.TMPDIR
+    vim.env.TEMP = vim.env.TMPDIR
+end
+
 vim.g.distro_root = root
 vim.opt.runtimepath:prepend(root)
 vim.opt.packpath:prepend(root)
