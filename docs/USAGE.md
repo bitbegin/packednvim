@@ -55,9 +55,12 @@ fzf 与 fd 都随包分发（`bin/fzf`、`bin/fd`），配置里已**显式指�
 
 1. **按词移动对中文生效。** `jieba.vim` 接管 `w` / `b` / `e`，
    中文按分词结果跳，而不是按字节或整段跳。ASCII 仍走 Vim 原本的行为。
-2. **字符宽度按双宽处理**（`ambiwidth=double`）。中文与框线字符不会错位。
-   ⚠️ 代价：`listchars` 与缩进线只能用 ASCII（`·`、`│` 这类属于东亚「歧义宽度」字符，
-   设进去会报 `E1512` 并导致**整份选项失效**）。这是刻意的取舍。
+2. **字符宽度与终端保持一致**（`ambiwidth=single`）。歧义宽度字符（`─` `…` `▌` 这类）
+   按 1 格算，与现代终端（Windows Terminal / Alacritty）的真实渲染一致——
+   汉字属于「宽（W）」类，**不受这个设置影响**，中文照常按双宽显示。
+   ⚠️ 历史教训：曾用 `ambiwidth=double`，结果引发一整串显示故障
+   （`E1512` 报错、符号列撑宽、fzf 界面截断、搜索残留碎片），详见
+   [`INSTALL.md` 的字符宽度一节](INSTALL.md#三常见问题)。
 3. **输入法自动切换**（`im-select.nvim`）：
    - Windows：用随包的 `bin/im-select.exe`，**开箱可用**
    - Linux：需要系统有 `fcitx5-remote` 或 `ibus`
