@@ -79,8 +79,7 @@ plugins = [
   # --- mini.nvim 模块（同一个仓库；与 minimal 的差异在下面注释里）---
   "nvim-mini/mini.nvim#mini.tabline",     # 状态栏用 lualine；键位提示用 mini.clue（which-key 已按选型审查移除：与 clue 职责相同）
   "nvim-mini/mini.nvim#mini.clue",
-  "nvim-mini/mini.nvim#mini.starter",
-  "nvim-mini/mini.nvim#mini.files",       # <leader>E 文件树（与 oil 的 <leader>e 两种范式，各留一个入口）
+  "nvim-mini/mini.nvim#mini.starter",     # <leader>E 文件树已撤：与 oil 同属「文件浏览器」互斥格，一格一赢家
   "nvim-mini/mini.nvim#mini.sessions",
   "nvim-mini/mini.nvim#mini.visits",
   "nvim-mini/mini.nvim#mini.ai",

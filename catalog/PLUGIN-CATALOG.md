@@ -103,7 +103,7 @@
 - [ ] **nvim-telescope/telescope.nvim** · 作用：生态最大的模糊查找框架 · 依赖：外部工具（rg、fd、git） · 档位：core · 许可：MIT · 备注：本身纯 Lua，仅 grep / find / git 类 picker 需要上述命令
 - [ ] **nvim-mini/mini.nvim#mini.pick** · 作用：极简 picker，纯 Lua，无需任何外部命令 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [x] **stevearc/oil.nvim** · 作用：把目录当普通 buffer 编辑，改文件名即改盘上文件名 · 依赖：纯 Lua · 档位：core · 许可：MIT
-- [x] **nvim-mini/mini.nvim#mini.files** · 作用：分栏式文件管理器，可预览改动 · 依赖：纯 Lua · 档位：core · 许可：MIT
+- [ ] **nvim-mini/mini.nvim#mini.files** · 作用：分栏式文件管理器，可预览改动 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [x] **ibhagwan/fzf-lua** · 作用：基于 fzf 的 picker，大仓库下最快 · 依赖：外部工具（fzf、rg、fd、git） · 档位：ide · 许可：MIT · 备注：fzf 是硬依赖，缺失则完全不可用
 - [ ] **nvim-neo-tree/neo-tree.nvim** · 作用：带 git 与诊断信息的文件树 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **nvim-telescope/telescope-fzf-native.nvim** · 作用：给 telescope 的 C 语言模糊排序器，显著提速 · 依赖：编译/下载 · 档位：ide · 许可：MIT · 备注：需要 make 与 C 编译器；离线包必须预置编译产物
