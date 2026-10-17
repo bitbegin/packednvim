@@ -110,10 +110,18 @@ if ($Uninstall) {
     Write-Host '=== PATH ==='
     $up = GetUserPath
     if ($up) {
+        $drop = @()
+        if ($st.paths) { foreach ($x in @($st.paths)) { $drop += [string]$x } }
+        if ($st.path) { $drop += [string]$st.path }
         $parts = @()
-        foreach ($p in ($up -split ';')) { if ($p -and $p -ne $st.path) { $parts += $p } }
+        foreach ($p in ($up -split ';')) {
+            if (-not $p) { continue }
+            $keep = $true
+            foreach ($d in $drop) { if ($p -eq $d) { $keep = $false } }
+            if ($keep) { $parts += $p }
+        }
         SetUserPath ($parts -join ';')
-        Say ('removed ' + $st.path)
+        Say ('removed PATH entries: ' + ($drop -join ' ; '))
     }
 
     Write-Host '=== environment variables ==='
@@ -193,15 +201,22 @@ if (IsReparsePoint $LinkPath) {
 }
 
 Write-Host '=== 2. user PATH ==='
+# 两个目录都要在 PATH 上：
+#   <pkg>\bin        工具（rg / fzf / fd / stylua / shfmt / shellcheck / neovide）
+#   <pkg>\runtime\bin nvim.exe 本体（放在原位才能自己找到 runtime\share\nvim\runtime）
+# 前置写入，保证优先于系统安装的同名程序。
+$RtBin = $Pkg + '\runtime\bin'
 $up = GetUserPath
-$has = $false
-foreach ($p in ($up -split ';')) { if ($p -eq $Bin) { $has = $true } }
-if ($has) {
-    Say ('already present: ' + $Bin)
-} else {
-    if ($up) { SetUserPath ($Bin + ';' + $up) } else { SetUserPath $Bin }
-    Say ('added: ' + $Bin)
+$parts = @()
+if ($up) { foreach ($p in ($up -split ';')) { if ($p) { $parts += $p } } }
+$added = @()
+foreach ($want in @($RtBin, $Bin)) {
+    $has = $false
+    foreach ($p in $parts) { if ($p -eq $want) { $has = $true } }
+    if ($has) { Say ('already present: ' + $want) }
+    else { $parts = @($want) + $parts; $added += $want; Say ('added: ' + $want) }
 }
+if ($added.Count -gt 0) { SetUserPath ($parts -join ';') }
 
 Write-Host '=== 3. environment variables ==='
 foreach ($d in @($StateHome, $CacheHome, $LogDir)) {
@@ -248,6 +263,7 @@ $state = [ordered]@{}
 $state['installed_at'] = (Get-Date).ToString('s')
 $state['package'] = $Pkg
 $state['path'] = $Bin
+$state['paths'] = @($Bin, $RtBin)
 $state['link'] = $LinkPath
 $state['exts'] = $Exts
 $state['progids'] = $progIds
