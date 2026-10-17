@@ -1,4 +1,4 @@
-﻿# packednvim installer / uninstaller (Windows, per-user, no admin rights)
+# packednvim installer / uninstaller (Windows, per-user, no admin rights)
 #
 #   double-click install.cmd        -> install
 #   install.cmd /u                  -> uninstall
@@ -8,8 +8,11 @@
 #   2. %LOCALAPPDATA%\nvim  ->  this package      (junction; config discovery)
 #   3. <pkg>\bin on the user PATH                 (rg / fzf / fd / neovide ...)
 #   4. XDG_STATE_HOME + XDG_CACHE_HOME            (keeps state/cache in the package)
-#   5. file associations -> bin\neovide.exe "%1"  (GUI, no console, no .cmd/.vbs shim)
-#   6. "Open with packednvim" right-click entry
+#   5. NEOVIDE_CONFIG -> <pkg>\bin\neovide.toml   (GUI window size + CJK font fallback;
+#      Neovide never looks inside bin/ on its own -- it only reads
+#      %APPDATA%\neovide\config.toml or the path in NEOVIDE_CONFIG)
+#   6. file associations -> bin\neovide.exe "%1"  (GUI, no console, no .cmd/.vbs shim)
+#   7. "Open with packednvim" right-click entry
 #
 # Design notes (learned the hard way)
 #   * NEVER write XDG_CONFIG_HOME: config discovery relies on %LOCALAPPDATA%\nvim.
@@ -125,7 +128,11 @@ if ($Uninstall) {
     }
 
     Write-Host '=== environment variables ==='
-    foreach ($pair in @(@('XDG_STATE_HOME', $st.xdg_state, $st.xdg_state_prev), @('XDG_CACHE_HOME', $st.xdg_cache, $st.xdg_cache_prev))) {
+    foreach ($pair in @(
+        @('XDG_STATE_HOME', $st.xdg_state, $st.xdg_state_prev),
+        @('XDG_CACHE_HOME', $st.xdg_cache, $st.xdg_cache_prev),
+        @('NEOVIDE_CONFIG', $st.neovide_config, $st.neovide_config_prev)
+    )) {
         $name = $pair[0]
         $cur  = [Environment]::GetEnvironmentVariable($name, 'User')
         if ($cur -eq $pair[1]) {
@@ -229,6 +236,20 @@ SetUserEnvFast 'XDG_CACHE_HOME' $CacheHome
 Say ('XDG_STATE_HOME -> ' + $StateHome)
 Say ('XDG_CACHE_HOME -> ' + $CacheHome)
 
+# GUI 外观（初始窗口尺寸、字体与中文回退）随包放在 bin\neovide.toml。
+#
+# 光把文件放进去是不生效的：Neovide 只读 %APPDATA%\neovide\config.toml，
+# 或者 NEOVIDE_CONFIG 指向的路径 —— bin\ 在 PATH 上只解决「能不能找到
+# neovide.exe」，与配置位置无关。所以这里必须显式指过去。
+$NeovideToml = $Pkg + '\bin\neovide.toml'
+$prevNeoConf = [Environment]::GetEnvironmentVariable('NEOVIDE_CONFIG', 'User')
+if (Test-Path -LiteralPath $NeovideToml) {
+    SetUserEnvFast 'NEOVIDE_CONFIG' $NeovideToml
+    Say ('NEOVIDE_CONFIG -> ' + $NeovideToml)
+} else {
+    Write-Host '  (bin\neovide.toml 缺失，跳过 NEOVIDE_CONFIG；GUI 将用 Neovide 默认外观)'
+}
+
 Write-Host '=== 4. file associations ==='
 $progIds = @()
 foreach ($e in $Exts) {
@@ -272,6 +293,8 @@ $state['xdg_state'] = $StateHome
 $state['xdg_cache'] = $CacheHome
 $state['xdg_state_prev'] = $prevState
 $state['xdg_cache_prev'] = $prevCache
+$state['neovide_config'] = $NeovideToml
+$state['neovide_config_prev'] = $prevNeoConf
 $state | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
 Say $StateFile
 

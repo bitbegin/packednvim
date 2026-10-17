@@ -177,33 +177,26 @@ opt.path:append('**')          -- gf / :find 能递归查找
 opt.wildignore:append({ '*/node_modules/*', '*/.git/*', '*/target/*' })
 
 -- ---------------------------------------------------------------------------
--- GUI（Neovide）
+-- GUI（Neovide）外观 —— 不在这里设
 -- ---------------------------------------------------------------------------
--- 只在 Neovide 里生效。放在这里而不是单独文件，是因为它们本质上是「外观选项」，
--- 和上面的 number/relativenumber 是一类东西；拆成 gui.lua 反而让人以为
--- 编辑器行为也被劈成了两半。
+-- 这里**刻意没有** `if vim.g.neovide then ... end` 这种分支，因为那个判断在本
+-- 文件执行时永远为假：Neovide 并不会在启动 nvim 时注入该变量（日志里的启动
+-- 命令只有 `--embed -p`），它是连接成功之后才经 RPC 设的，而 options.lua 在
+-- init.lua 装配置的阶段就跑完了。
 --
--- 启动器 neovide.cmd / neovide.sh 负责让 nvim 加载本配置；GUI 外观（字体、
--- 窗口）放在随包的 neovide.toml 里，由 Neovide 自己读。
-if vim.g.neovide then
-  -- 缩放。高分屏上 1.0 通常偏小，但别设太大 —— 设过头会显得字傻大。
-  vim.g.neovide_scale_factor = 1.0
-
-  -- 光标滑动动画：默认 0.1 秒。这是 Neovide 最有用的特性之一
-  -- （眼睛能跟上光标跳到哪了），但也有人嫌晃，按需改大或设 0 关掉。
-  vim.g.neovide_cursor_animation_length = 0.1
-  vim.g.neovide_cursor_trail_size = 0.8
-
-  -- 平滑滚动同理。
-  vim.g.neovide_scroll_animation_length = 0.2
-
-  -- macOS 上 Cmd 会被 Neovide 当作 Alt 上报。Windows / Linux 不需要，
-  -- 误开反而会让 Win/Super 键失去系统层面的作用。
-  if vim.fn.has('mac') == 1 then
-    vim.g.neovide_input_use_logo = true
-  end
-
-  -- 标题栏显示当前文件，切换窗口时能认出是哪个 Neovide。
-  vim.o.title = true
-  vim.o.titlestring = 'Neovim - %t'
-end
+-- 曾经写过一段 `if vim.g.neovide then vim.g.neovide_scale_factor = ... end`，
+-- 当时靠启动器额外传 `--cmd "let g:neovide=v:true"` 才生效；启动器被移除后，
+-- 那一段就变成了**静默的死代码**（改了没反应，且不报错，很难察觉）。
+--
+-- 现在 GUI 外观统一由随包的 bin/neovide.toml 负责：
+--   - 初始窗口尺寸（maximized，避开 size 的物理像素/DPI 陷阱）
+--   - 字体与中文回退链（等宽优先，否则中文会出现字间空隙）
+-- 由 install.ps1 写 NEOVIDE_CONFIG 指过去 —— 只放进 bin/ 是无效的，
+-- Neovide 只认 %APPDATA%\neovide\config.toml 或 NEOVIDE_CONFIG。
+--
+-- 字体也可以用 guifont / guifontwide 在此设置（终端里设置实测不报错，
+-- v:errmsg 为空），但那会与 toml 的 [font] 形成两处真相，所以不这么做。
+--
+-- 若将来确实需要「只在 GUI 里生效」的运行时设置，正确时机是 UIEnter 事件，
+-- 那时 Neovide 已经把 g:neovide 设好了：
+--   vim.api.nvim_create_autocmd('UIEnter', { callback = function() ... end })
