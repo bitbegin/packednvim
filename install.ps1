@@ -141,6 +141,14 @@ if ($Uninstall) {
         }
     }
 
+    # NEOVIDE_CONFIG 单独回滚（规则与上面两个 XDG 变量一致：只在自己设的值仍生效时恢复）
+    $curNv = [Environment]::GetEnvironmentVariable('NEOVIDE_CONFIG', 'User')
+    if ($curNv -and $st.neovide_config -and ($curNv -eq $st.neovide_config)) {
+        if ($st.neovide_config_prev) { SetUserEnvFast 'NEOVIDE_CONFIG' $st.neovide_config_prev }
+        else { SetUserEnvFast 'NEOVIDE_CONFIG' $null }
+        Say 'restored NEOVIDE_CONFIG'
+    }
+
     Write-Host '=== associations ==='
     foreach ($p in @($st.progids)) {
         if ($p) { RemoveReg ('Software\Classes\' + $p); Say ('removed ProgID ' + $p) }
