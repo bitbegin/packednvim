@@ -27,18 +27,6 @@
       "clone_url": "https://github.com/catppuccin/nvim.git"
     },
     {
-      "repo": "chrisgrieser/nvim-spider",
-      "dir": "pack/distro/start/nvim-spider",
-      "pack": "start",
-      "branch": "main",
-      "commit": "38f74f733734566bec3b23a9dcf968a5a5559cd6",
-      "bytes": 58545,
-      "license_files": [
-        "LICENSE"
-      ],
-      "clone_url": "https://github.com/chrisgrieser/nvim-spider.git"
-    },
-    {
       "repo": "dstein64/vim-startuptime",
       "dir": "pack/distro/opt/vim-startuptime",
       "pack": "opt",
@@ -411,18 +399,6 @@
       "clone_url": "https://github.com/rafamadriz/friendly-snippets.git"
     },
     {
-      "repo": "ray-x/lsp_signature.nvim",
-      "dir": "pack/distro/opt/lsp_signature.nvim",
-      "pack": "opt",
-      "branch": "master",
-      "commit": "1997451c4c9956a1380d8bea4b0e33ebdf07976e",
-      "bytes": 148224,
-      "license_files": [
-        "LICENSE.txt"
-      ],
-      "clone_url": "https://github.com/ray-x/lsp_signature.nvim.git"
-    },
-    {
       "repo": "rebelot/kanagawa.nvim",
       "dir": "pack/distro/start/kanagawa.nvim",
       "pack": "start",
@@ -469,18 +445,6 @@
         "LICENSE"
       ],
       "clone_url": "https://github.com/saghen/blink.cmp.git"
-    },
-    {
-      "repo": "saghen/blink.lib",
-      "dir": "pack/distro/start/blink.lib",
-      "pack": "start",
-      "branch": "main",
-      "commit": "fd9a48ebbe6ec30d5dfcc5b42c243941ccdca1aa",
-      "bytes": 141496,
-      "license_files": [
-        "LICENSE"
-      ],
-      "clone_url": "https://github.com/saghen/blink.lib.git"
     },
     {
       "repo": "sainnhe/gruvbox-material",
