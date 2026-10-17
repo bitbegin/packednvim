@@ -11,10 +11,19 @@
 --      这正对应「结果按行显示」，也让日志场景的结果窗口不至于爆掉。
 --      想保留每处匹配，把 dedupe 关掉即可。
 --
--- 另外，实际执行搜索时不经过 shell（用 systemlist 传列表），
+-- 另外，实际执行搜索时不经过 shell（把参数作为列表传给进程），
 -- 因此正则里的引号、反斜杠、管道符都不需要转义，Windows 上尤其省心。
+--
+-- **搜索是异步的**：用 vim.system 起 rg 子进程，结果在回调里填 quickfix。
+-- 曾经用 vim.fn.systemlist()，那是同步调用 —— rg 跑完之前整个 Neovim 冻结，
+-- 在大仓库上表现为「按了 sG 之后界面假死几秒」。改成异步后搜索期间仍可操作，
+-- 并会在命令行显示「搜索中…」。新搜索会终止上一次尚未结束的进程，
+-- 因为两次搜索抢同一个 quickfix，旧结果没有意义。
 
 local M = {}
+
+-- 正在运行的搜索进程句柄。新搜索开始前会 kill 掉它。
+local active_proc = nil
 
 -- 传给 rg 的固定参数
 local RG_OPTS = {
@@ -99,43 +108,64 @@ function M.run(args, title, opts)
   cmd[#cmd + 1] = '--'
   vim.list_extend(cmd, args)
 
-  local lines = vim.fn.systemlist(cmd)
-  local code = vim.v.shell_error
+  -- 取消上一次仍在跑的搜索：结果都进同一个 quickfix，
+  -- 让旧进程跑完再覆盖新结果只会更困惑。
+  if active_proc then
+    pcall(function() active_proc:kill(15) end)
+    active_proc = nil
+  end
 
-  -- shell_error < 0 表示进程根本没起来（rg 不在、权限被拒、被沙箱拦住等）。
-  -- 这种情况绝不能当成「无匹配」吞掉，否则用户会以为真的没搜到。
-  if type(code) ~= 'number' or code < 0 then
-    vim.notify(
-      'distro: 无法启动 rg，搜索未执行\n命令: ' .. table.concat(cmd, ' '),
-      vim.log.levels.ERROR
-    )
+  -- 窗口变小时提示一下，让用户知道「没反应」其实是在等 rg
+  local function echo(msg, hl)
+    vim.api.nvim_echo({ { msg, hl or 'Comment' } }, false, {})
+  end
+  echo(('搜索中… %s'):format(title))
+
+  local started = vim.uv.hrtime()
+
+  local ok, proc = pcall(vim.system, cmd, { text = true }, function(obj)
+    -- 回调在 fast event context 里跑，改 quickfix / 弹通知必须回到主循环
+    vim.schedule(function()
+      active_proc = nil
+      local elapsed = math.floor((vim.uv.hrtime() - started) / 1e6)
+
+      local function report(msg, level)
+        vim.notify(('%s（%d ms）'):format(msg, elapsed), level or vim.log.levels.INFO)
+      end
+
+      -- code 为 nil = 进程没起来，或被我们自己 kill 了
+      if obj.code == nil then
+        report('搜索被中断或 rg 无法启动', vim.log.levels.WARN)
+        return
+      end
+
+      if obj.code > 1 then -- rg: 0=有匹配 1=无匹配 2=出错
+        report('rg 出错：' .. ((obj.stderr or ''):gsub('%s+$', '')), vim.log.levels.ERROR)
+        return
+      end
+
+      local lines = vim.split(obj.stdout or '', '\n', { plain = true, trimempty = true })
+      if opts.dedupe ~= false then
+        lines = dedupe_by_line(lines)
+      end
+
+      vim.fn.setqflist({}, ' ', { title = title, lines = lines, efm = '%f:%l:%c:%m' })
+
+      if #lines == 0 then
+        report('无匹配')
+        return
+      end
+
+      vim.cmd('copen')
+      report(('`%s`：%d 处匹配'):format(title, #lines))
+    end)
+  end)
+
+  if not ok then
+    vim.notify('distro: 无法执行 rg —— ' .. tostring(proc), vim.log.levels.ERROR)
     return
   end
-
-  if code > 1 then -- rg: 0=有匹配 1=无匹配 2=出错
-    vim.notify('rg 出错：\n' .. table.concat(lines, '\n'), vim.log.levels.ERROR)
-    return
-  end
-
-  if opts.dedupe ~= false then
-    lines = dedupe_by_line(lines)
-  end
-
-  vim.fn.setqflist({}, ' ', { title = title, lines = lines, efm = '%f:%l:%c:%m' })
-
-  if #lines == 0 then
-    vim.notify('无匹配', vim.log.levels.INFO)
-    return
-  end
-  -- 就用默认的 :copen。
-  --
-  -- 曾在这里改成「给一个稳定高度下限」，理由是我以为默认行为会让窗口贴合结果条数
-  -- （只有两三条结果就缩成三四行）。**实测推翻了那个假设**：
-  --   :copen     -> 高度 10 行（即使只有 2 条结果）
-  --   :copen 12  -> 高度 12 行
-  -- 既然默认已经是稳定的 10 行，强制更高只会在结果很少时白占屏幕，所以撤掉。
-  -- 临时改高度：在结果窗口里 :resize 20，或 <C-w> 后按 + / -
-  vim.cmd('copen')
+  active_proc = proc
 end
 
 local function prompt(msg, on_confirm)
