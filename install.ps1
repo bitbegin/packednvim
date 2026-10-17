@@ -122,6 +122,16 @@ Write-Host "  package: $Pkg"
 Write-Host "  ext:     $($exts -join ', ')"
 Write-Host ''
 
+Write-Host '=== 0. Clearing the network mark (Mark of the Web) ==='
+# Downloaded zips carry Zone.Identifier, which makes Windows warn that the
+# publisher cannot be verified (and SmartScreen block nvim.exe on first run).
+# Doing it here means one command both unblocks and installs.
+$unblocked = 0
+foreach ($file in Get-ChildItem -LiteralPath $Pkg -Recurse -File -ErrorAction SilentlyContinue) {
+    try { Unblock-File -LiteralPath $file.FullName -ErrorAction Stop; $unblocked++ } catch { }
+}
+Write-Step "processed $unblocked files (no-op for files that had no mark)"
+
 Write-Host '=== 1. User PATH ==='
 $up = Get-UserPath
 if (($up -split ';') -contains $Bin) {
