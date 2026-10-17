@@ -48,6 +48,10 @@ $CmdLine = '"' + $Handler + '" "%1"'
 
 $Exts = @('md', 'markdown', 'txt')
 
+# 图标值：<exe>,0。必须在变量里拼好 —— 写成内联的 ($NeovideExe + ',0')
+# 会在参数绑定阶段被当成数组，报「无法将值 ",0" 转换为 System.Int32」。
+$IconValue = $Handler + ',0'
+
 function Say([string]$m) { Write-Host ('  ' + $m) }
 
 function GetRegDefault([string]$sub) {
