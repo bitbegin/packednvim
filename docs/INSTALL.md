@@ -57,13 +57,34 @@ D:\packednvim\          （Windows 示例）
 /opt/packednvim/        （Linux 示例）
 ```
 
+> **Windows：先解除下载标记，再解压。**
+>
+> 从浏览器下载的 zip 会被打上 Mark-of-the-Web（「来自 Internet」）标记，
+> 解压后**目录里每个文件都继承这个标记**。后果是双击任何 `.exe` / `.cmd` /
+> `.vbs` 都会弹出「打开文件 - 安全警告：无法验证发布者」。
+>
+> 这不是杀毒软件拦截，也不是脚本有问题，只是标记在起作用。两种解法：
+>
+> 1. **解压前**：右键 zip → 属性 → 勾选「解除锁定」→ 确定，然后解压
+> 2. **解压后**：`.cmd`/`.ps1` 里执行一次
+>    ```powershell
+>    Get-ChildItem 'D:\packednvim' -Recurse | Unblock-File
+>    ```
+>
+> 用 `curl` / `git` 下载的 zip **不带**这个标记，所以不会问——这也是为什么
+> 「别人说没弹、我这里有弹」。
+
 解压后应该看到：
 
 ```
 init.lua          入口
-nvim.cmd          Windows 启动脚本
+nvim.cmd          Windows 终端启动脚本
 nvim.sh           Linux/macOS 启动脚本
-bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select）
+neovide.vbs       Windows 双击启动 GUI（无控制台窗口）
+neovide.cmd       Windows GUI 启动（终端里用，能看报错）
+neovide.sh        Linux/macOS GUI 启动
+neovide.toml      随包的 GUI 外观配置（字体等）
+bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select / neovide）
 lua/distro/       配置本体
 pack/distro/      插件：start/ 启动即加载，opt/ 按键才加载
 vendor/           lock.json（可复现凭证）+ treesitter/site/（本平台的 tree-sitter 解析器）
@@ -74,12 +95,20 @@ VERSION           这个包是什么、怎么来的
 
 ### 3. 启动
 
-**Windows**
+**Windows（终端界面）**
 
 ```bat
 cd /d D:\packednvim
 nvim.cmd
 ```
+
+**Windows（图形界面）**
+
+双击 `neovide.vbs`。它不会留下控制台窗口；启动失败会弹框告诉你退出码。
+要看详细报错就用 `neovide.cmd`（会有控制台窗口，错误直接打在里面）。
+
+没有随包 Neovide 的平台（Linux arm64、macOS）请自行安装，再用同一批
+`neovide.sh` 启动——启动器会负责 XDG 隔离。
 
 **Linux / macOS**
 
