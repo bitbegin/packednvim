@@ -23,18 +23,8 @@ local function read_manifest()
 end
 
 local function current_platform()
-  -- 平台名必须与 tools/fetch-tools.ps1 写进 bin/manifest.json 的一致：
-  -- linux-x64 / linux-arm64 / windows-x64 / darwin-x64 / darwin-arm64。
-  -- （曾用 has('win32') 二分，macOS 被误判成 linux-arm64，
-  --   于是 darwin 包的工具检查一条都比不中 —— 空转还报绿。）
-  local os = 'linux'
-  if vim.fn.has('win32') == 1 then
-    os = 'windows'
-  elseif vim.fn.has('macunix') == 1 then
-    os = 'darwin'
-  end
-  local arch = jit.arch == 'arm64' and 'arm64' or 'x64'
-  return os .. '-' .. arch
+  -- 平台名收在 distro.platform（唯一权威源），这里不再自己推导。
+  return require('distro.platform').name()
 end
 
 -- ---------------------------------------------------------------------------

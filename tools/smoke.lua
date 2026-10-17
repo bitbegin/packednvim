@@ -94,6 +94,9 @@ check('tempname() 非空（TMPDIR 回归）', vim.fn.tempname() ~= '')
 check('switchbuf 开新标签页', vim.o.switchbuf:find('newtab') ~= nil)
 check('搜索键位 sg/sG 已注册',
   vim.fn.maparg('<leader>sg', 'n') ~= '' and vim.fn.maparg('<leader>sG', 'n') ~= '')
+-- 键位提示（which-key）与搜索恢复（<leader>ss）也曾是回归点
+check('which-key 键位提示可加载', (pcall(require, 'which-key')))
+check('搜索恢复键 <leader>ss 已注册', vim.fn.maparg('<leader>ss', 'n') ~= '')
 -- fzf-lua 加载时要建 RPC server；darwin 曾因 socket 路径超 104 字节上限
 -- 导致整个模块加载失败（我们在 plugins/search.lua 预建了短地址来绕开）。
 check('fzf-lua RPC server 已建立',

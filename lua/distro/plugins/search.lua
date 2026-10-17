@@ -9,7 +9,7 @@
 
 local function fzf_bin()
   local root = vim.g.distro_root or ''
-  local exe = root .. '/bin/' .. (vim.fn.has('win32') == 1 and 'fzf.exe' or 'fzf')
+  local exe = root .. '/bin/fzf' .. require('distro.platform').exe_suffix()
   -- 随包的那份优先；万一丢了就退回 PATH 上的 fzf（fzf-lua 自己也会再兜一次底）
   if vim.fn.executable(exe) == 1 then return exe end
   return 'fzf'

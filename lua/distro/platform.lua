@@ -33,4 +33,18 @@ function M.lib_ext(family)
   return '.so'
 end
 
+-- 平台名，必须与 tools/fetch-tools.ps1 写进 bin/manifest.json 的一致：
+-- linux-x64 / linux-arm64 / windows-x64 / darwin-arm64。
+-- 曾散在 health.lua 里用 has('win32') 二分，macOS 被误判成 linux-arm64，
+-- 工具检查一条都比不中（空转还报绿）。收在这里只有一个定义点。
+function M.name()
+  local os = 'linux'
+  if vim.fn.has('win32') == 1 then
+    os = 'windows'
+  elseif vim.fn.has('macunix') == 1 then
+    os = 'darwin'
+  end
+  return os .. '-' .. (jit.arch == 'arm64' and 'arm64' or 'x64')
+end
+
 return M

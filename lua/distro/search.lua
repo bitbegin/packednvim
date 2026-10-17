@@ -47,7 +47,7 @@ end
 
 -- 找 rg：先看 <distro>/bin，再看 PATH
 local function find_rg()
-  local exe = vim.fn.has('win32') == 1 and 'rg.exe' or 'rg'
+  local exe = 'rg' .. require('distro.platform').exe_suffix()
   local bundled = distro_root() .. '/bin/' .. exe
   if vim.fn.executable(bundled) == 1 then
     return bundled
