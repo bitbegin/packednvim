@@ -307,6 +307,14 @@ RegSetString 'Software\Classes\Applications\nvim.exe' 'FriendlyAppName' 'Neovim 
 foreach ($e in $Exts) { RegSetString 'Software\Classes\Applications\nvim.exe\SupportedTypes' ('.' + $e) '' }
 Say 'registered Neovim (packednvim, console)'
 
+# 资源管理器读的是 ProgID 的 DefaultIcon；Applications 条目只影响「打开方式」列表。
+# 之前这几条一直没写成功（替换串里的 $ 变量被展开，锚点静默不中）。
+foreach ($e in $Exts) {
+    RegSetString ('Software\Classes\packednvim.' + $e) 'DefaultIcon' $IconValue
+}
+RegSetString 'Software\Classes\Applications\nvim.exe' 'DefaultIcon' $IconValue
+Say ('icons registered: ' + $IconValue)
+
 Write-Host '=== 7. state (for /u) ==='
 if (-not (Test-Path -LiteralPath $StateDir)) { New-Item -ItemType Directory -Force -Path $StateDir | Out-Null }
 $state = [ordered]@{}
