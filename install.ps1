@@ -1,4 +1,4 @@
-# packednvim installer / uninstaller (Windows, per-user, no admin rights)
+﻿# packednvim installer / uninstaller (Windows, per-user, no admin rights)
 #
 #   double-click install.cmd        -> install
 #   install.cmd /u                  -> uninstall
@@ -233,6 +233,17 @@ $prevState = [Environment]::GetEnvironmentVariable('XDG_STATE_HOME', 'User')
 $prevCache = [Environment]::GetEnvironmentVariable('XDG_CACHE_HOME', 'User')
 SetUserEnvFast 'XDG_STATE_HOME' $StateHome
 SetUserEnvFast 'XDG_CACHE_HOME' $CacheHome
+# GUI 外观：Neovide 只认 %APPDATA%\neovide\config.toml 或 NEOVIDE_CONFIG。
+# 随包的 bin\neovide.toml 里有字体回退链（含中文字形），不指过去就会用
+# 内置默认字体，中文很可能显示成方块。
+$NeovideToml = $Bin + '\neovide.toml'
+$prevNeovide = [Environment]::GetEnvironmentVariable('NEOVIDE_CONFIG', 'User')
+if (Test-Path -LiteralPath $NeovideToml) {
+    SetUserEnvFast 'NEOVIDE_CONFIG' $NeovideToml
+    Say ('NEOVIDE_CONFIG -> ' + $NeovideToml)
+} else {
+    Say 'bin\neovide.toml not found (GUI uses Neovide defaults)'
+}
 Say ('XDG_STATE_HOME -> ' + $StateHome)
 Say ('XDG_CACHE_HOME -> ' + $CacheHome)
 
@@ -293,6 +304,8 @@ $state['xdg_state'] = $StateHome
 $state['xdg_cache'] = $CacheHome
 $state['xdg_state_prev'] = $prevState
 $state['xdg_cache_prev'] = $prevCache
+$state['neovide_config'] = $NeovideToml
+$state['neovide_config_prev'] = $prevNeovide
 $state['neovide_config'] = $NeovideToml
 $state['neovide_config_prev'] = $prevNeoConf
 $state | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
