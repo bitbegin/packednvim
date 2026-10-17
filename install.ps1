@@ -237,13 +237,16 @@ Write-Host '=== 3. environment variables ==='
 foreach ($d in @($StateHome, $CacheHome, $LogDir)) {
     if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 }
+
 $prevState = [Environment]::GetEnvironmentVariable('XDG_STATE_HOME', 'User')
 $prevCache = [Environment]::GetEnvironmentVariable('XDG_CACHE_HOME', 'User')
 SetUserEnvFast 'XDG_STATE_HOME' $StateHome
 SetUserEnvFast 'XDG_CACHE_HOME' $CacheHome
+Say ('XDG_STATE_HOME -> ' + $StateHome)
+Say ('XDG_CACHE_HOME -> ' + $CacheHome)
+
 # GUI 外观：Neovide 只认 %APPDATA%\neovide\config.toml 或 NEOVIDE_CONFIG。
-# 随包的 bin\neovide.toml 里有字体回退链（含中文字形），不指过去就会用
-# 内置默认字体，中文很可能显示成方块。
+# 随包的 bin\neovide.toml 带字体回退链（含中文字形），不指过去就用内置默认。
 $NeovideToml = $Bin + '\neovide.toml'
 $prevNeovide = [Environment]::GetEnvironmentVariable('NEOVIDE_CONFIG', 'User')
 if (Test-Path -LiteralPath $NeovideToml) {
@@ -252,11 +255,6 @@ if (Test-Path -LiteralPath $NeovideToml) {
 } else {
     Say 'bin\neovide.toml not found (GUI uses Neovide defaults)'
 }
-Say ('XDG_STATE_HOME -> ' + $StateHome)
-Say ('XDG_CACHE_HOME -> ' + $CacheHome)
-
-}
-
 Write-Host '=== 4. file associations ==='
 $progIds = @()
 foreach ($e in $Exts) {
@@ -303,7 +301,6 @@ $state['xdg_cache_prev'] = $prevCache
 $state['neovide_config'] = $NeovideToml
 $state['neovide_config_prev'] = $prevNeovide
 $state['neovide_config'] = $NeovideToml
-$state['neovide_config_prev'] = $prevNeoConf
 $state | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
 Say $StateFile
 
