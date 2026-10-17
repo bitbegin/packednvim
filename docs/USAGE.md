@@ -324,3 +324,19 @@ GUI 外观在 Neovide 自己的配置里（`%APPDATA%\neovide\config.toml`）：
 以及 `luacheck`（无官方预编译产物）、`clang-format`、`clang-tidy`、`ruff`。
 
 缺了不影响启动，`:checkhealth distro` 会列出缺哪些以及各自影响什么。
+
+---
+
+## 键位的前提条件
+
+有几个键位本身没问题，只是**需要前置状态**。不知道这条时，表现就是「按了没反应」。
+
+| 键位 | 需要的前提 | 没有前提时的表现 |
+| --- | --- | --- |
+| `<leader>ss` 恢复上次搜索 | 之前至少用 fzf 搜索过一次（`<leader>sg` / `ff` 等） | 命令行闪一句 `[Fzf-lua] No resume data available.`，看起来像没反应 |
+| `<leader>sn` / `<leader>sp` 上/下一个结果 | quickfix 列表里有内容（跑过 `<leader>sG`、`:grep` 或 `:vimgrep`） | 无动作、无报错（`:cnext` 空列表时就是这样） |
+| `<leader>sc` 关闭结果窗口 | quickfix 窗口开着 | 无动作 |
+| `<leader>sw` 搜光标下单词 | 光标停在单词上 | 无动作 |
+| `<leader>sr` / `<leader>sR` 替换 | 先 `grug-far` 打开替换面板（首次会自动加载） | 首次按键只加载插件，再按一次才打开 —— 这是懒加载的正常行为 |
+
+**推荐的搜索闭环**：`<leader>sg` 搜索 → `Esc` 关掉 → 改文件 → `<leader>ss` 回到同一个搜索界面（查询词与选中位置都保留）。

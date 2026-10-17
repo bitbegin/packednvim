@@ -85,7 +85,7 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `<leader>sn` | 普通 | 搜索：下一个结果 |
 | `<leader>sp` | 普通 | 搜索：上一个结果 |
 | `<leader>sr` | 普通 | 全项目替换（grug-far） |
-| `<leader>ss` | 普通 | 搜索：恢复上一次搜索界面（fzf resume） |
+| `<leader>ss` | 普通 | 搜索：恢复上次搜索（需先搜索过一次） |
 | `<leader>su` | 普通 | 搜索：连被忽略的文件一起搜 |
 | `<leader>sw` | 普通 | 搜索：光标下单词 |
 
@@ -95,6 +95,7 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | --- | --- | --- |
 | `<leader>uU` | 普通 | 撤销树（可视化撤销历史） |
 | `<leader>uc` | 普通 | 固定显示当前函数/类头部 |
+| `<leader>um` | 普通 | 开关：Markdown 渲染（hybrid） |
 | `<leader>ur` | 普通 | 重载当前文件 |
 | `<leader>ut` | 普通 | 查看启动耗时明细 |
 
