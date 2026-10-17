@@ -84,7 +84,6 @@ install.sh        安装（Linux / macOS）
 uninstall.cmd     卸载（Windows）
 uninstall.ps1 / uninstall.sh
 bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select / neovide）
-bin/neovide.toml  GUI 外观配置（初始窗口尺寸、字体与中文回退）
 lua/distro/       配置本体
 pack/distro/      插件：start/ 启动即加载，opt/ 按键才加载
 vendor/           lock.json（可复现凭证）+ treesitter/site/（本平台的 tree-sitter 解析器）
@@ -101,7 +100,6 @@ VERSION           这个包是什么、怎么来的
 - 建 `%LOCALAPPDATA%\nvim` → 本包的 junction（配置发现靠它）
 - 把 `<包>\bin` 与 `<包>\runtime\bin` 加进用户 PATH
 - 设用户级 `XDG_STATE_HOME` / `XDG_CACHE_HOME`（状态与会话留在包内）
-- 设 `NEOVIDE_CONFIG` 指向 `bin\neovide.toml`（GUI 外观跟着包走）
 - 注册 `.md` 等扩展名与「右键 → 打开方式」
 
 之后终端里直接敲：
@@ -123,7 +121,7 @@ nvim
 ```bash
 cd /opt/packednvim
 chmod +x install.sh     # 从 Windows 解压过来的话需要补可执行位
-./install.sh            # 建链接、加 PATH、设 XDG_* 与 NEOVIDE_CONFIG
+./install.sh            # 建链接、加 PATH、设 XDG_STATE_HOME / XDG_CACHE_HOME
 ```
 
 打开文件、传参数都可以，安装后 `nvim` 已在 PATH 上：
