@@ -23,7 +23,6 @@ plugins = [
   "nvim-mini/mini.nvim#mini.tabline",
   "nvim-mini/mini.nvim#mini.starter",
   "nvim-mini/mini.nvim#mini.clue",
-  "nvim-mini/mini.nvim#mini.notify",
   "nvim-mini/mini.nvim#mini.sessions",
   "nvim-mini/mini.nvim#mini.visits",
   "nvim-mini/mini.nvim#mini.ai",
@@ -37,7 +36,6 @@ plugins = [
   "nvim-mini/mini.nvim#mini.hipatterns",
   "nvim-mini/mini.nvim#mini.trailspace",
   "nvim-mini/mini.nvim#mini.bufremove",
-  "nvim-mini/mini.nvim#mini.cursorword",
   "nvim-mini/mini.nvim#mini.align",
   "nvim-mini/mini.nvim#mini.splitjoin",
   # --- 主题：留几个候选，随时切换（都是纯 Lua，不加运行成本）---
@@ -79,9 +77,10 @@ plugins = [
 desc = "推荐：把体验件换成专精实现，LSP / 格式化 / 诊断链路补齐。日常主力方案。"
 plugins = [
   # --- mini.nvim 模块（同一个仓库；与 minimal 的差异在下面注释里）---
-  "nvim-mini/mini.nvim#mini.tabline",     # 状态栏与键位提示改用专精实现，故不含 mini.statusline / mini.clue
+  "nvim-mini/mini.nvim#mini.tabline",     # 状态栏用 lualine；键位提示用 mini.clue（which-key 已按选型审查移除：与 clue 职责相同）
+  "nvim-mini/mini.nvim#mini.clue",
   "nvim-mini/mini.nvim#mini.starter",
-  "nvim-mini/mini.nvim#mini.notify",
+  "nvim-mini/mini.nvim#mini.files",       # <leader>E 文件树（与 oil 的 <leader>e 两种范式，各留一个入口）
   "nvim-mini/mini.nvim#mini.sessions",
   "nvim-mini/mini.nvim#mini.visits",
   "nvim-mini/mini.nvim#mini.ai",
@@ -95,7 +94,6 @@ plugins = [
   "nvim-mini/mini.nvim#mini.hipatterns",
   "nvim-mini/mini.nvim#mini.trailspace",
   "nvim-mini/mini.nvim#mini.bufremove",
-  "nvim-mini/mini.nvim#mini.cursorword",
   "nvim-mini/mini.nvim#mini.align",
   "nvim-mini/mini.nvim#mini.splitjoin",
   # --- 主题：留几个候选，随时切换（都是纯 Lua，不加运行成本）---
@@ -107,7 +105,6 @@ plugins = [
   "rose-pine/neovim",
   "nvim-lualine/lualine.nvim",
   "nvim-tree/nvim-web-devicons",
-  "folke/which-key.nvim",
   "j-hui/fidget.nvim",
   "stevearc/dressing.nvim",
   "mbbill/undotree",
@@ -128,7 +125,6 @@ plugins = [
   # --- LSP ---
   "neovim/nvim-lspconfig",
   "folke/lazydev.nvim",
-  "ray-x/lsp_signature.nvim",
   "antosha417/nvim-lsp-file-operations",
   # --- 补全与片段 ---
   "saghen/blink.cmp",
@@ -160,7 +156,6 @@ plugins = [
   # --- mini.nvim 模块 ---
   "nvim-mini/mini.nvim#mini.tabline",
   "nvim-mini/mini.nvim#mini.starter",
-  "nvim-mini/mini.nvim#mini.notify",
   "nvim-mini/mini.nvim#mini.sessions",
   "nvim-mini/mini.nvim#mini.visits",
   "nvim-mini/mini.nvim#mini.ai",
@@ -174,7 +169,6 @@ plugins = [
   "nvim-mini/mini.nvim#mini.hipatterns",
   "nvim-mini/mini.nvim#mini.trailspace",
   "nvim-mini/mini.nvim#mini.bufremove",
-  "nvim-mini/mini.nvim#mini.cursorword",
   "nvim-mini/mini.nvim#mini.align",
   "nvim-mini/mini.nvim#mini.splitjoin",
   "nvim-mini/mini.nvim#mini.extra",
@@ -188,7 +182,6 @@ plugins = [
   "rose-pine/neovim",
   "nvim-lualine/lualine.nvim",
   "nvim-tree/nvim-web-devicons",
-  "folke/which-key.nvim",
   "j-hui/fidget.nvim",
   "mbbill/undotree",
   "RRethy/vim-illuminate",
@@ -218,7 +211,6 @@ plugins = [
   # --- LSP ---
   "neovim/nvim-lspconfig",
   "folke/lazydev.nvim",
-  "ray-x/lsp_signature.nvim",
   "antosha417/nvim-lsp-file-operations",
   "stevearc/aerial.nvim",
   "aznhe21/actions-preview.nvim",

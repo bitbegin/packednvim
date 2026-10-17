@@ -103,7 +103,7 @@
 - [ ] **nvim-telescope/telescope.nvim** · 作用：生态最大的模糊查找框架 · 依赖：外部工具（rg、fd、git） · 档位：core · 许可：MIT · 备注：本身纯 Lua，仅 grep / find / git 类 picker 需要上述命令
 - [ ] **nvim-mini/mini.nvim#mini.pick** · 作用：极简 picker，纯 Lua，无需任何外部命令 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [x] **stevearc/oil.nvim** · 作用：把目录当普通 buffer 编辑，改文件名即改盘上文件名 · 依赖：纯 Lua · 档位：core · 许可：MIT
-- [ ] **nvim-mini/mini.nvim#mini.files** · 作用：分栏式文件管理器，可预览改动 · 依赖：纯 Lua · 档位：core · 许可：MIT
+- [x] **nvim-mini/mini.nvim#mini.files** · 作用：分栏式文件管理器，可预览改动 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [x] **ibhagwan/fzf-lua** · 作用：基于 fzf 的 picker，大仓库下最快 · 依赖：外部工具（fzf、rg、fd、git） · 档位：ide · 许可：MIT · 备注：fzf 是硬依赖，缺失则完全不可用
 - [ ] **nvim-neo-tree/neo-tree.nvim** · 作用：带 git 与诊断信息的文件树 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **nvim-telescope/telescope-fzf-native.nvim** · 作用：给 telescope 的 C 语言模糊排序器，显著提速 · 依赖：编译/下载 · 档位：ide · 许可：MIT · 备注：需要 make 与 C 编译器；离线包必须预置编译产物
@@ -131,7 +131,7 @@
 - [x] **neovim/nvim-lspconfig** · 作用：官方 LSP 服务器配置集合，架在内置 vim.lsp 之上 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0 · 备注：纯配置数据、零联网；要求 Neovim ≥ 0.11.3
 - [x] **folke/lazydev.nvim** · 作用：为 lua_ls 补全 Neovim API 与你的配置源码，写发行版自身必需 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0
 - [ ] **stevearc/aerial.nvim** · 作用：符号大纲侧栏，支持 LSP 与 treesitter · 依赖：纯 Lua · 档位：ide · 许可：MIT
-- [x] **ray-x/lsp_signature.nvim** · 作用：输入函数参数时显示签名 · 依赖：纯 Lua · 档位：ide · 许可：MIT
+- [ ] **ray-x/lsp_signature.nvim** · 作用：输入函数参数时显示签名 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **aznhe21/actions-preview.nvim** · 作用：code action 预览后再应用 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [x] **antosha417/nvim-lsp-file-operations** · 作用：重命名文件时自动更新 import 路径 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **nvimtools/none-ls.nvim** · 作用：通过 LSP 协议注入诊断与格式化 · 依赖：纯 Lua · 档位：ide · 许可：Unlicense · 备注：是已归档的 null-ls 的活跃继任者
@@ -199,7 +199,7 @@
 - [x] **RRethy/vim-illuminate** · 作用：高亮光标下符号的所有出现 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [x] **NMAC427/guess-indent.nvim** · 作用：自动推断并设置缩进 · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **folke/zen-mode.nvim** · 作用：专注模式，隐藏所有干扰元素 · 依赖：纯 Lua · 档位：ide · 许可：Apache-2.0
-- [x] **nvim-mini/mini.nvim#mini.cursorword** · 作用：高亮光标下单词 · 依赖：纯 Lua · 档位：extra · 许可：MIT
+- [ ] **nvim-mini/mini.nvim#mini.cursorword** · 作用：高亮光标下单词 · 依赖：纯 Lua · 档位：extra · 许可：MIT
 - [x] **nvim-mini/mini.nvim#mini.hipatterns** · 作用：高亮 TODO、颜色码、十六进制色值等自定义模式 · 依赖：纯 Lua · 档位：extra · 许可：MIT
 - [x] **nvim-mini/mini.nvim#mini.align** · 作用：交互式文本对齐 · 依赖：纯 Lua · 档位：extra · 许可：MIT
 - [x] **nvim-mini/mini.nvim#mini.splitjoin** · 作用：拆分与合并参数列表 · 依赖：纯 Lua · 档位：extra · 许可：MIT
@@ -235,15 +235,15 @@
 ## O. 通知 · 命令行 · UI 润色
 
 - [x] **j-hui/fidget.nvim** · 作用：右下角显示 LSP 加载进度 · 依赖：纯 Lua · 档位：core · 许可：MIT
-- [x] **nvim-mini/mini.nvim#mini.notify** · 作用：极简通知系统，统一收集 :messages · 依赖：纯 Lua · 档位：core · 许可：MIT
+- [ ] **nvim-mini/mini.nvim#mini.notify** · 作用：极简通知系统，统一收集 :messages · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [ ] **folke/noice.nvim** · 作用：重构命令行、消息、通知与悬浮窗的整套 UI · 依赖：纯 Lua · 档位：ide · 许可：Apache-2.0 · 备注：依赖 nui.nvim；上游更新放缓
 - [x] **stevearc/dressing.nvim** · 作用：美化 vim.ui.input 与 vim.ui.select · 依赖：纯 Lua · 档位：ide · 许可：MIT
 - [ ] **rcarriga/nvim-notify** · 作用：可堆叠的通知管理器 · 依赖：纯 Lua · 档位：extra · 许可：MIT · 备注：2025-09 后停更，mini.notify 或 snacks.notifier 可替代
 
 ## P. 快捷键提示
 
-- [x] **folke/which-key.nvim** · 作用：按下前缀键后弹出可用键位，预设丰富 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0 · 备注：上游更新放缓
-- [ ] **nvim-mini/mini.nvim#mini.clue** · 作用：常驻键位提示 HUD，可自定义触发前缀 · 依赖：纯 Lua · 档位：core · 许可：MIT
+- [ ] **folke/which-key.nvim** · 作用：按下前缀键后弹出可用键位，预设丰富 · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0 · 备注：上游更新放缓
+- [x] **nvim-mini/mini.nvim#mini.clue** · 作用：常驻键位提示 HUD，可自定义触发前缀 · 依赖：纯 Lua · 档位：core · 许可：MIT
 - [ ] **tris203/hawtkeys.nvim** · 作用：扫描出尚未被占用的键位 · 依赖：纯 Lua · 档位：extra · 备注：活跃度低，选用前先确认
 
 ## Q. 终端 · 任务 · 数据库 · HTTP

@@ -118,6 +118,7 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | 键位 | 模式 | 说明 |
 | --- | --- | --- |
 | `<leader>:` | 普通 | 命令行历史（可编辑） |
+| `<leader>E` | 普通 | 文件树（mini.files，从当前文件处） |
 | `<leader>Y` | 普通 | 复制整行到系统剪贴板 |
 | `<leader>e` | 普通 | 像编辑文本一样编辑目录 |
 | `<leader>xX` | 普通 | 诊断/引用/符号列表面板 |
@@ -172,19 +173,15 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `g=` | 可视 | Evaluate selection |
 | `g==` | 普通 | Evaluate line |
 | `gA` | 普通/可视 | Align with preview |
-| `gH` | 普通/可视 | Reset hunks |
 | `gS` | 普通/可视 | Toggle arguments |
 | `gX` | 普通/可视 | Opens filepath or URI under cursor with the system handler (file explorer, web browser, …) |
 | `g[` | 普通/可视/操作符待决 | Move to left "around" |
 | `g]` | 普通/可视/操作符待决 | Move to right "around" |
 | `ga` | 普通/可视 | Align |
-| `gb` | 普通 | 按语法树决定注释符号 |
-| `gc` | 普通 | 按语法树决定注释符号 |
+| `gc` | 普通 | Comment |
 | `gc` | 操作符待决 | Comment textobject |
 | `gc` | 可视 | Comment selection |
-| `gcc` | 普通 | 按语法树决定注释符号 |
-| `gh` | 普通/可视 | Apply hunks |
-| `gh` | 操作符待决 | Hunk range textobject |
+| `gcc` | 普通 | Comment line |
 | `gm` | 普通 | Multiply |
 | `gm` | 可视 | Multiply selection |
 | `gmm` | 普通 | Multiply line |
@@ -240,7 +237,6 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `[C` / `]C` | Comment first | Comment last |
 | `[D` / `]D` | Diagnostic first | Diagnostic last |
 | `[F` / `]F` | File first | File last |
-| `[H` / `]H` | First hunk | Last hunk |
 | `[I` / `]I` | Indent first | Indent last |
 | `[J` / `]J` | Jump first | Jump last |
 | `[L` / `]L` | Location first | Location last |
@@ -257,7 +253,6 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `[c` / `]c` | Comment backward | Comment forward |
 | `[d` / `]d` | Diagnostic backward | Diagnostic forward |
 | `[f` / `]f` | File backward | File forward |
-| `[h` / `]h` | Previous hunk | Next hunk |
 | `[i` / `]i` | Go to indent scope top | Go to indent scope bottom |
 | `[j` / `]j` | Jump backward | Jump forward |
 | `[l` / `]l` | Location backward | Location forward |

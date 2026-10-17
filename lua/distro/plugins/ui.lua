@@ -1,11 +1,14 @@
--- 界面：状态栏 / 键位提示 / LSP 进度 / 输入框 / 图标。
+-- 界面：状态栏 / LSP 进度 / 输入框 / 图标。
 --
 -- 这里的选择都是「与 mini 主心骨不重复」的：
 --   lualine      取代 mini.statusline（中文用户更熟悉，配置直观）
---   which-key    管 <leader> 之后的前缀；mini.clue 管 g/z/寄存器等内置前缀
 --   dressing     取代 mini.input，让输入框与 fzf-lua 的视觉风格一致
 --   devicons     mini.icons 负责图标，devicons 只补它缺的品牌图标
---   fidget       LSP 进度显示；通知本身交给 mini.notify
+--   fidget       LSP 进度显示
+--
+-- 键位提示**不在这一组**：mini.clue（见 mini.lua）是唯一的提示弹窗。
+-- which-key.nvim 曾与 mini.clue 并存 —— 两者同为「按前缀弹键位提示」，
+-- 同时启用会双重弹窗/互相抢触发，选型审查后已移除。
 
 local function bundled(name)
   local root = vim.g.distro_root or ''
@@ -43,22 +46,6 @@ return {
   },
 
   {
-    names = 'which-key.nvim',
-    pack = 'start',
-    setup = function()
-      require('which-key').setup({
-        preset = 'modern',
-        -- 图标故意用 ASCII：`»` `➜` 这类属于东亚「歧义宽度」字符，
-        -- 在 ambiwidth=double 下会占两格，弹窗里容易错位。
-        icons = { breadcrumb = '>', separator = '->', group = '+' },
-        -- 每个键位都设了 desc（见 keymaps.lua 与各插件配置），所以这里不需要额外 spec
-        spec = {},
-        win = { border = 'rounded', padding = { 1, 2 } },
-      })
-    end,
-  },
-
-  {
     names = 'fidget.nvim',
     pack = 'start',
     setup = function()
@@ -68,7 +55,10 @@ return {
           ignore_done_already = true,
         },
         notification = {
-          -- 通知统一走 mini.notify，别再让 fidget 也接管一次 vim.notify
+          -- 通用通知走 Neovim 原生 cmdline 显示。
+          -- （mini.notify 曾在启用清单里，但从未被接线成 vim.notify 的后端，
+          --   纯死重量，选型审查后已禁用。若想要弹窗式通用通知，
+          --   把这里改成 true 让 fidget 接管即可。）
           override_vim_notify = false,
         },
       })
@@ -87,7 +77,7 @@ return {
       --   触发路径：任何走 vim.ui.input 的操作，例如 <leader>sG（要输入正则）。
       --
       -- 这是「CJK 正确宽度」与「插件假定字符恒为 1 格」的冲突，责任在插件的假设。
-      -- 本发行版面向中文用户，ambiwidth=double 不能退让，所以按插件修正。
+      -- 本发行版面向中文用户，所以按插件修正。
       --
       -- 写法上刻意只覆盖 listchars 这一个键：dressing.setup 是深度合并，
       -- 其余 win_options 默认值会保留。（覆盖式配置丢掉默认值，我在这上面栽过。）

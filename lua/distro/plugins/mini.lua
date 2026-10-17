@@ -15,11 +15,18 @@ local M = {}
 -- 模块名以 mini.nvim 实际提供的为准（曾凭记忆写成 basename/hips，并不存在）。
 M.enabled = {
   'ai', 'align', 'animate', 'bracketed', 'bufremove',
-  'clue', 'comment', 'cursorword', 'diff', 'extra', 'files', 'git',
+  'clue', 'comment', 'extra', 'files',
   'hipatterns', 'icons', 'indentscope', 'jump', 'map',
-  'notify', 'operators', 'pairs', 'sessions', 'splitjoin',
+  'operators', 'pairs', 'sessions', 'splitjoin',
   'starter', 'surround', 'tabline', 'trailspace', 'visits',
 }
+
+-- 选型审查（2026-10）后**有意不再启用**的模块，原因是与专精插件撞了职责：
+--   cursorword —— 光标词高亮，与 vim-illuminate（LSP 引用高亮）双重高亮同一批词
+--   diff       —— 符号列 diff 标记，与 gitsigns 的 + ~ _ 画在同一列
+--   git        —— hunk 操作，gitsigns 已全部覆盖且 <leader>g* 键位已接好
+--   notify     —— 从未把 vim.notify 接线到它，纯死重量；通用通知走原生 cmdline
+-- mini.nvim 整体是一个仓库，禁用模块不省体积 —— 省的是启动时间与「双重行为」。
 
 -- 有意不启用的模块及原因（写在这里，免得被当成遗漏）：
 --   completion  用 blink.cmp（性能与 LSP 集成更好，且已有官方预编译库）
@@ -126,17 +133,18 @@ return {
             local dir = vim.fn.stdpath('state') .. '/sessions'
             vim.fn.mkdir(dir, 'p')
             cfg = { directory = dir }
-          elseif name == 'notify' then
-            -- 用 mini.notify 接管 vim.notify：消息有历史、可回看，且不打断输入
-            cfg = { lsp_progress = { enable = false } }
           elseif name == 'clue' then
-            -- 与 which-key 分工：which-key 管前导键（<leader> 之后），
-            -- clue 管内置的 g / z / 寄存器 / 窗口等前缀键。
+            -- clue 是**唯一**的键位提示（which-key.nvim 已按选型审查移除：
+            -- 两者同为「按前缀弹提示」，同时启用会双重弹窗）。
+            -- 内置前缀 g/z/寄存器/窗口，加上 <leader>，全由它管；
+            -- 提示文案来自各处 keymap 的 desc（keymaps.lua 开头的约定）。
             --
             -- 注意 API：**全局触发器**的 keys 必须是单个字符串，一个前缀一条；
             -- 传成列表会报 E1174（String required for argument 1）。
             cfg = {
               triggers = {
+                { mode = 'n', keys = '<leader>' },
+                { mode = 'x', keys = '<leader>' },
                 { mode = 'n', keys = 'g' },
                 { mode = 'n', keys = 'z' },
                 { mode = 'n', keys = "'" },
@@ -147,6 +155,12 @@ return {
             }
           elseif name == 'files' then
             cfg = { windows = { preview = true, width_preview = 60 } }
+            -- 树状文件浏览的入口。oil（<leader>e，小写）是「目录当缓冲区编辑」，
+            -- MiniFiles（<leader>E，大写）是常规文件树 —— 两种范式各留一个入口。
+            -- 从当前文件所在目录打开，比从项目根开更贴近「我在哪」。
+            vim.keymap.set('n', '<leader>E', function()
+              MiniFiles.open(vim.api.nvim_buf_get_name(0))
+            end, { desc = '文件树（mini.files，从当前文件处）' })
           elseif name == 'map' then
             cfg = { window = { config = { relative = 'editor', border = 'rounded' } } }
           end
