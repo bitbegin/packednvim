@@ -152,6 +152,15 @@ if ($Uninstall) {
         }
     }
 
+    Write-Host '=== Removing environment variables ==='
+    foreach ($pair in @(@('XDG_STATE_HOME', $st.xdg_state, $st.xdg_state_prev), @('XDG_CACHE_HOME', $st.xdg_cache, $st.xdg_cache_prev))) {
+        $name = $pair[0]; $cur = [Environment]::GetEnvironmentVariable($name, 'User')
+        if ($cur -eq $pair[1]) {
+            if ($pair[2]) { [Environment]::SetEnvironmentVariable($name, $pair[2], 'User') } else { [Environment]::SetEnvironmentVariable($name, $null, 'User') }
+            Write-Step "restored $name"
+        }
+    }
+
     Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
     Write-Host ''
     Write-Host '[OK] Uninstalled. Open a NEW terminal for the PATH change to take effect.'
@@ -203,6 +212,27 @@ if (-not (Test-Path -LiteralPath $nvimLogDir)) {
     New-Item -ItemType Directory -Force -Path $nvimLogDir | Out-Null
     Write-Host "  created $nvimLogDir (silences the startup log warning)"
 }
+
+# ---------------------------------------------------------------------------
+# 用户级环境变量：只为让「纯 exe 启动」不再打日志警告。
+# Neovim 在读取 init.lua 之前就决定了日志路径（stdpath('state')/logs），
+# 那个默认目录在部分机器上建不出来，于是启动时拦一下回车。
+#
+# 只设 STATE 与 CACHE —— **绝不设 XDG_CONFIG_HOME**：配置的发现依赖
+# %LOCALAPPDATA%\nvim（junction 或系统默认），把它改到包内空目录会导致
+# init.lua 根本找不到（那样发行版就完全不加载了）。
+# ---------------------------------------------------------------------------
+$envState = Join-Path $Pkg '.local\state'
+$envCache = Join-Path $Pkg '.local\cache'
+foreach ($d in @($envState, $envCache)) {
+    if (-not (Test-Path -LiteralPath $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
+}
+$prevState = [Environment]::GetEnvironmentVariable('XDG_STATE_HOME', 'User')
+$prevCache = [Environment]::GetEnvironmentVariable('XDG_CACHE_HOME', 'User')
+[Environment]::SetEnvironmentVariable('XDG_STATE_HOME', $envState, 'User')
+[Environment]::SetEnvironmentVariable('XDG_CACHE_HOME', $envCache, 'User')
+Write-Step "XDG_STATE_HOME -> $envState"
+Write-Step "XDG_CACHE_HOME -> $envCache"
 
 Write-Host '=== 1. User PATH ==='
 $up = Get-UserPath
@@ -285,6 +315,10 @@ New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
     exts         = $exts
     progids      = $progIds
     launcher     = [bool]$Launcher
+    xdg_state    = $envState
+    xdg_cache    = $envCache
+    xdg_state_prev = $prevState
+    xdg_cache_prev = $prevCache
     link         = $LinkPath
 } | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding utf8
 Write-Step $StateFile
