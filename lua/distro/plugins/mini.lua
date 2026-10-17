@@ -136,17 +136,16 @@ return {
             vim.fn.mkdir(dir, 'p')
             cfg = { directory = dir }
           elseif name == 'clue' then
-            -- clue 是**唯一**的键位提示（which-key.nvim 已按选型审查移除：
-            -- 两者同为「按前缀弹提示」，同时启用会双重弹窗）。
-            -- 内置前缀 g/z/寄存器/窗口，加上 <leader>，全由它管；
-            -- 提示文案来自各处 keymap 的 desc（keymaps.lua 开头的约定）。
-            --
-            -- 注意 API：**全局触发器**的 keys 必须是单个字符串，一个前缀一条；
-            -- 传成列表会报 E1174（String required for argument 1）。
+            -- clue 是**唯一**的键位提示，但**只管内置前缀**（g/z/寄存器/窗口）。
+            -- <leader> **不在**触发器里 —— 这是实测结论，不是疏忽：
+            -- mini.clue 收集映射线索用映射的原始字节（如 '<Space>sg'），
+            -- 而查询键走 keytrans 符号形式（'<leader>' 不会被 replace_termcodes
+            -- 展开），两套表示法对不上 —— <leader> 触发时窗口永远显示空。
+            -- （g/z 这类可打印前缀两边表示一致，所以正常。）
+            -- 移除 <leader> 触发后，space+sg 走原生映射直接执行（无弹窗）。
+            -- 若上游修复了对 <leader> 的处理，把这两个触发器加回来即可。
             cfg = {
               triggers = {
-                { mode = 'n', keys = '<leader>' },
-                { mode = 'x', keys = '<leader>' },
                 { mode = 'n', keys = 'g' },
                 { mode = 'n', keys = 'z' },
                 { mode = 'n', keys = "'" },
