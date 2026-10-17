@@ -15,7 +15,7 @@ local M = {}
 -- 模块名以 mini.nvim 实际提供的为准（曾凭记忆写成 basename/hips，并不存在）。
 M.enabled = {
   'ai', 'align', 'animate', 'bracketed', 'bufremove',
-  'clue', 'comment', 'extra', 'files',
+  'clue', 'comment', 'extra',
   'hipatterns', 'icons', 'indentscope', 'jump', 'map',
   'operators', 'pairs', 'sessions', 'splitjoin',
   'starter', 'surround', 'tabline', 'trailspace', 'visits',
@@ -26,6 +26,8 @@ M.enabled = {
 --   diff       —— 符号列 diff 标记，与 gitsigns 的 + ~ _ 画在同一列
 --   git        —— hunk 操作，gitsigns 已全部覆盖且 <leader>g* 键位已接好
 --   notify     —— 从未把 vim.notify 接线到它，纯死重量；通用通知走原生 cmdline
+--   files      —— 与 oil 同属「文件浏览器」互斥格；check-stack 的一格一赢家
+--                 否决了双入口（见 catalog/STACKS.toml），文件浏览由 oil 承担
 -- mini.nvim 整体是一个仓库，禁用模块不省体积 —— 省的是启动时间与「双重行为」。
 
 -- 有意不启用的模块及原因（写在这里，免得被当成遗漏）：
@@ -153,14 +155,6 @@ return {
                 { mode = 'x', keys = 'g' },
               },
             }
-          elseif name == 'files' then
-            cfg = { windows = { preview = true, width_preview = 60 } }
-            -- 树状文件浏览的入口。oil（<leader>e，小写）是「目录当缓冲区编辑」，
-            -- MiniFiles（<leader>E，大写）是常规文件树 —— 两种范式各留一个入口。
-            -- 从当前文件所在目录打开，比从项目根开更贴近「我在哪」。
-            vim.keymap.set('n', '<leader>E', function()
-              MiniFiles.open(vim.api.nvim_buf_get_name(0))
-            end, { desc = '文件树（mini.files，从当前文件处）' })
           elseif name == 'map' then
             cfg = { window = { config = { relative = 'editor', border = 'rounded' } } }
           end
