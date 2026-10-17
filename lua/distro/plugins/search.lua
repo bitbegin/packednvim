@@ -235,12 +235,12 @@ return {
         require('grug-far').open(vim.tbl_extend('force', { prefills = { paths = vim.fn.expand('%') } }, args or {}))
       end
 
-      vim.keymap.set('n', '<leader>sr', function() open({ prefills = { paths = vim.fn.getcwd() } }) end,
+      vim.keymap.set('n', '<leader>sr', function() open({ prefills = { paths = require("distro.search").search_root() } }) end,
         { desc = '全项目替换（grug-far）' })
       vim.keymap.set('n', '<leader>sR', function() open() end,
         { desc = '当前文件替换（grug-far）' })
       vim.keymap.set('v', '<leader>sr', function()
-        require('grug-far').with_visual_selection({ prefills = { paths = vim.fn.getcwd() } })
+        require('grug-far').with_visual_selection({ prefills = { paths = require("distro.search").search_root() } })
       end, { desc = '用选中内容替换（grug-far）' })
     end,
   },

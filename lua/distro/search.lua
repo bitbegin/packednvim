@@ -178,10 +178,37 @@ local function prompt(msg, on_confirm)
   end)
 end
 
+-- 搜索根：**不能**直接用 cwd。双击文件启动时，进程 cwd 是 Explorer 给的
+-- （经常就是 C:\Windows\System32），在那儿搜会撞一堆「拒绝访问」，结果也全无意义。
+-- 规则：cwd 像系统目录/盘符根时，改用当前文件所在目录；再不行退回 home。
+local SYSTEM_CWD = {
+    '^%a:\\$',           -- C:\ 这类盘符根
+    '^%a:\\windows',     -- Windows
+    '^%a:\\program files',
+    '^%a:\\programdata',
+}
+
+function M.search_root()
+    local cwd = vim.fn.getcwd()
+    local lower = cwd:lower():gsub('/', '\\')
+    local is_system = false
+    for _, pat in ipairs(SYSTEM_CWD) do
+        if lower:match(pat) then is_system = true break end
+    end
+    if not is_system then return cwd end
+
+    local name = vim.api.nvim_buf_get_name(0)
+    if name ~= '' then
+        local dir = vim.fn.fnamemodify(name, ':h')
+        if dir ~= '' and vim.fn.isdirectory(dir) == 1 then return dir end
+    end
+    return vim.fn.expand('~')
+end
+
 --- 项目内正则搜索（进 quickfix）
 function M.grep_project()
   prompt('项目内正则搜索: ', function(pat)
-    M.run({ pat }, 'rg: ' .. pat)
+    M.run({ pat, M.search_root() }, 'rg: ' .. pat)
   end)
 end
 
@@ -204,7 +231,7 @@ function M.grep_word()
     vim.notify('光标下没有单词', vim.log.levels.WARN)
     return
   end
-  M.run({ '--fixed-strings', word }, 'rg: ' .. word)
+  M.run({ '--fixed-strings', word, M.search_root() }, 'rg: ' .. word)
 end
 
 -- <leader>sg 的实现：fzf 实时 grep（原设计），quickfix 兜底。
