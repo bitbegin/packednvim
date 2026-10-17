@@ -41,6 +41,10 @@ local LSP_EXPECTED = {
 }
 
 -- 不属于插件依赖、但发行版文档里承诺的运行期前置条件
+-- 可选工具：随包带了更好，没带不算故障。它们不参与工具完整性判定，
+-- 否则没装 GUI 的用户一进 :checkhealth 就看到红字错误。
+local OPTIONAL_TOOLS = { neovide = 'Neovide 图形界面（终端里用不受影响）' }
+
 local EXTRA_COMMANDS = {
   { 'git', 'gitsigns / neogit 的全部功能；没有它版本控制相关功能不可用' },
   { 'clang-format', 'conform 格式化 C / C++' },
@@ -132,17 +136,29 @@ function M.check()
   else
     local platform = current_platform()
     local checked, missing, from_bin, from_system = 0, {}, 0, 0
+    local gui_ok, gui_missing = nil, nil
     for _, t in ipairs(manifest.tools or {}) do
       if t.platform == platform then
-        checked = checked + 1
-        local path = (vim.g.distro_root or '') .. '/bin/' .. t.file
-        if vim.fn.filereadable(path) == 1 and vim.fn.executable(path) == 1 then
-          from_bin = from_bin + 1
-        elseif vim.fn.executable(vim.fn.fnamemodify(t.file, ':r')) == 1 then
-          -- 自带的那份不可用，但系统 PATH 上有同名命令：能用，但不是我们预期的那份
-          from_system = from_system + 1
+        if OPTIONAL_TOOLS[t.tool] then
+          -- 可选工具留给下面单独的「图形界面」小节报告，
+          -- 不参与 checked/missing 的计数，避免把「没有 GUI」算成缺工具。
+          local p = (vim.g.distro_root or '') .. '/bin/' .. t.file
+          if vim.fn.filereadable(p) == 1 and vim.fn.executable(p) == 1 then
+            gui_ok = t
+          else
+            gui_missing = t
+          end
         else
-          missing[#missing + 1] = ('%s（%s，%s）'):format(t.tool, t.version, t.file)
+          checked = checked + 1
+          local path = (vim.g.distro_root or '') .. '/bin/' .. t.file
+          if vim.fn.filereadable(path) == 1 and vim.fn.executable(path) == 1 then
+            from_bin = from_bin + 1
+          elseif vim.fn.executable(vim.fn.fnamemodify(t.file, ':r')) == 1 then
+            -- 自带的那份不可用，但系统 PATH 上有同名命令：能用，但不是我们预期的那份
+            from_system = from_system + 1
+          else
+            missing[#missing + 1] = ('%s（%s，%s）'):format(t.tool, t.version, t.file)
+          end
         end
       end
     end
@@ -157,6 +173,26 @@ function M.check()
     if from_system > 0 then
       h.warn(('%d 个工具正从系统 PATH 取用，而不是 bin/ 里随包的那份 —— '
         .. '版本可能与 manifest.json 记录的不一致'):format(from_system))
+    end
+
+    -- -----------------------------------------------------------------------
+    h.start('distro: 图形界面（Neovide）')
+
+    -- Neovide 是**可选**前端：终端里用完全正常，缺了不该报错。
+    -- 但它一旦随包带了，就得说清楚怎么启动，否则 bin/neovide.exe 只是死重量。
+    if gui_ok then
+      h.ok(('随包 Neovide %s（bin/%s）'):format(gui_ok.version or '?', gui_ok.file))
+      h.info('启动：neovide.cmd（Windows）或 ./neovide.sh（Linux）'
+        .. ' —— 直接用 Neovide 打开 nvim 会绕过 XDG 隔离')
+    elseif gui_missing then
+      h.info(('Neovide 已随包但不可执行（bin/%s）'):format(gui_missing.file))
+      h.info('Linux 上常见原因：丢了可执行位。修：chmod +x bin/neovide')
+    else
+      -- 本平台上游没有 Neovide 产物（linux-arm64 与 macOS 目前如此）。
+      -- 这属于**已知的平台缺口**，不是打包出错。
+      h.info('本平台没有随包 Neovide —— ' .. (OPTIONAL_TOOLS.neovide or '图形界面') .. '不可用')
+      h.info('需要图形界面可自行安装：https://neovide.dev/ ，'
+        .. '然后用本包的启动器启动（它会负责 XDG 隔离）')
     end
   end
 

@@ -50,7 +50,11 @@ if (-not (Test-Path (Join-Path $dst 'pack/distro'))) {
 
 # 同步清单：配置本体 + 启动脚本。tools/ 不进包；docs/ 在 package.ps1 的 INCLUDE
 # 里（随包分发），但它是文档、不参与运行逻辑，故不在本脚本同步范围内。
-$items = @('init.lua', 'nvim.cmd', 'nvim.sh', 'lua')
+$items = @('init.lua', 'nvim.cmd', 'nvim.sh', 'neovide.cmd', 'neovide.sh', 'neovide.toml', 'lua')
+
+# 批处理必须 CRLF（cmd.exe 对 LF 结尾的多行 if(...) 块解析不可靠），
+# 所以这两类文件不能直接比哈希 / 直接拷贝。
+$crlfFiles = @('nvim.cmd', 'neovide.cmd')
 
 # 逐文件比对。nvim.cmd 特殊处理，见下。
 function Compare-One([string]$rel) {
@@ -70,8 +74,8 @@ function Compare-One([string]$rel) {
         return '同步'
     }
 
-    # nvim.cmd 在包里必须是 CRLF，所以不能直接比哈希 —— 统一成 LF 再比
-    if ($rel -eq 'nvim.cmd') {
+    # 批处理在包里必须是 CRLF，所以不能直接比哈希 —— 统一成 LF 再比
+    if ($crlfFiles -contains $rel) {
         $a = ([System.IO.File]::ReadAllText($src)) -replace "`r`n", "`n"
         $b = ([System.IO.File]::ReadAllText($tgt)) -replace "`r`n", "`n"
         return $(if ($a -eq $b) { '同步' } else { '内容过期' })
@@ -123,7 +127,7 @@ foreach ($rel in $drift) {
         # 同步脚本报告「已同步 lua」，但包里的 mini.lua 仍是旧版本，
         # 于是「我修了、你跑的还是旧的」又出现了一轮。
         Copy-Item (Join-Path $src '*') $tgt -Recurse -Force
-    } elseif ($rel -eq 'nvim.cmd') {
+    } elseif ($crlfFiles -contains $rel) {
         # 必须 CRLF，否则 cmd.exe 解析多行 if(...) 块会出问题
         $t = [System.IO.File]::ReadAllText($src) -replace "`r`n", "`n" -replace "`n", "`r`n"
         [System.IO.File]::WriteAllText($tgt, $t, (New-Object System.Text.UTF8Encoding($false)))

@@ -62,6 +62,10 @@ function Get-Specs {
             $s += @{ Tool='stylua';     Repo='JohnnyMorganz/StyLua';    Pattern='*linux-x86_64.zip';                 Mode='file'; Member='stylua';       Out='stylua' }
             $s += @{ Tool='shfmt';      Repo='mvdan/sh';                Pattern='*_linux_amd64';                     Mode='raw';  Member='';             Out='shfmt' }
             $s += @{ Tool='shellcheck'; Repo='koalaman/shellcheck';     Pattern='*.linux.x86_64.tar.xz';             Mode='file'; Member='shellcheck';   Out='shellcheck' }
+            # Neovide（GUI 前端）。官方产物是「单个裸二进制」的 tar，
+            # 资源全编进可执行文件，没有伴随目录 —— 所以能和 rg 一样放进 bin/。
+            # 它只提供 x86_64 产物，故 linux-arm64 与 darwin-* 均不列此项。
+            $s += @{ Tool='neovide';    Repo='neovide/neovide';        Pattern='neovide-linux-x86_64.tar';          Mode='file'; Member='neovide';      Out='neovide' }
         }
         'linux-arm64' {
             # 注意 ripgrep / fd 在 arm64 linux 上提供的是 gnu 而非 musl 构建
@@ -81,6 +85,10 @@ function Get-Specs {
             # shellcheck 的 Windows 产物名里没有平台关键词（就叫 shellcheck-vX.Y.Z.zip），
             # 所以这里只能用 *.zip 这种宽匹配 —— 它正是之前一直可用的那条规则。
             $s += @{ Tool='shellcheck'; Repo='koalaman/shellcheck';     Pattern='*.zip';                             Mode='file'; Member='shellcheck.exe'; Out='shellcheck.exe' }
+            # Neovide（GUI 前端）。官方产物 neovide.exe.zip 里就是一个裸 exe，
+            # 不依赖额外目录或 DLL（Rust 静态链接受 VC++ 运行时），
+            # 因此与其它单文件工具一样放进 bin/。启动器会优先用 bin/neovide.exe。
+            $s += @{ Tool='neovide';    Repo='neovide/neovide';        Pattern='neovide.exe.zip';                   Mode='file'; Member='neovide.exe';   Out='neovide.exe' }
         }
         'darwin-x64' {
             $s += @{ Tool='ripgrep';    Repo='BurntSushi/ripgrep';      Pattern='*x86_64-apple-darwin.tar.gz';       Mode='file'; Member='rg';           Out='rg' }
@@ -202,7 +210,9 @@ foreach ($spec in Get-Specs -P $Platform) {
         if ($asset.name -like '*.zip') {
             Expand-Archive -Path $raw_file -DestinationPath $stage -Force
         } else {
-            # tar 能处理 .tar.gz 与 .tar.xz（Windows 10+ 自带的 bsdtar 也可以）
+            # tar 能处理 .tar / .tar.gz / .tar.xz
+            # （注意 Neovide 的 Linux 产物是**不压缩的** .tar，Windows 10+ 自带的
+            #   bsdtar 一样能解，不必额外引入压缩库）
             & tar -xf $raw_file -C $stage
             if ($LASTEXITCODE -ne 0) { throw ("解压 {0} 失败" -f $asset.name) }
         }
