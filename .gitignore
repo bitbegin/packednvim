@@ -50,3 +50,5 @@ dist/
 
 # 发行版运行期状态（nvim.cmd/nvim.sh 把 XDG 指到这里）
 .local/
+/packednvim
+/mermaid-demo.md
