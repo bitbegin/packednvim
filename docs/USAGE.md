@@ -176,19 +176,33 @@ Caused by: Invalid parameter
 
 ### 启动
 
-用**随包的启动器**，不要直接开 `neovide.exe`：
+用**随包的启动器**，不要直接开 `neovide.exe`。
+
+**Windows 双击启动用 `neovide.vbs`，不要双击 `neovide.cmd`。**
+
+| 场景 | 用哪个 | 原因 |
+| --- | --- | --- |
+| 双击 / 快捷方式 | `neovide.vbs` | 批处理必然分配控制台窗口，双击后会一直留着那个黑窗口。`.vbs` 用 `WScript.Shell.Run` 以 `SW_HIDE` 启动，**完全没有窗口** |
+| 终端里、要看报错 | `neovide.cmd` | 错误直接打在终端里，便于排查 |
+| 拖文件到图标上 | `neovide.vbs` | 会把参数转发给 `neovide.cmd` |
+
+启动失败时 `.vbs` 会弹框提示退出码（因为此时没有控制台可看），并让你改用
+`neovide.cmd` 看详细错误。
 
 ```powershell
-# Windows
-.\neovide.cmd
-.\neovide.cmd docs\USAGE.md     # 直接打开某个文件
+# Windows：双击 neovide.vbs，或命令行
+.\neovide.vbs
+.\neovide.cmd docs\USAGE.md     # 要看到输出时用这个
 ```
 
 ```sh
-# Linux / macOS
+# Linux / macOS（没有控制台窗口问题）
 ./neovide.sh
 ./neovide.sh docs/USAGE.md
 ```
+
+> 若双击 `.vbs` 毫无反应，多半是该机器用组策略禁用了 WSH
+> （`wscript.exe`）。此时改用 `neovide.cmd`，代价是会有一个控制台窗口。
 
 ### 为什么必须用启动器
 

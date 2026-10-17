@@ -50,11 +50,11 @@ if (-not (Test-Path (Join-Path $dst 'pack/distro'))) {
 
 # 同步清单：配置本体 + 启动脚本。tools/ 不进包；docs/ 在 package.ps1 的 INCLUDE
 # 里（随包分发），但它是文档、不参与运行逻辑，故不在本脚本同步范围内。
-$items = @('init.lua', 'nvim.cmd', 'nvim.sh', 'neovide.cmd', 'neovide.sh', 'neovide.toml', 'lua')
+$items = @('init.lua', 'nvim.cmd', 'nvim.sh', 'neovide.cmd', 'neovide.sh', 'neovide.vbs', 'neovide.toml', 'lua')
 
 # 批处理必须 CRLF（cmd.exe 对 LF 结尾的多行 if(...) 块解析不可靠），
 # 所以这两类文件不能直接比哈希 / 直接拷贝。
-$crlfFiles = @('nvim.cmd', 'neovide.cmd')
+$crlfFiles = @('nvim.cmd', 'neovide.cmd', 'neovide.vbs')
 
 # 逐文件比对。nvim.cmd 特殊处理，见下。
 function Compare-One([string]$rel) {

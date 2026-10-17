@@ -21,3 +21,6 @@ bin/licenses/**  text
 # 因此 nvim.cmd 保持纯 ASCII，详细的中文说明放在 docs/USAGE.md。
 *.cmd            text eol=crlf
 *.bat            text eol=crlf
+# VBS 同样被 WSH 按系统代码页解析，且必须是 CRLF —— neovide.vbs 用 SW_HIDE
+# 启动 neovide.cmd，从而不在双击时留下控制台窗口。
+*.vbs            text eol=crlf
