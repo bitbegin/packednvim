@@ -212,24 +212,24 @@ neovide docs/USAGE.md
 | 找得到 `nvim` / `neovide` | 用户 PATH 加入 `<包>\bin` 与 `<包>\runtime\bin` |
 | 配置发现（`init.lua`） | `%LOCALAPPDATA%\nvim` → 指向包的 junction |
 | 状态与会话 | 用户级 `XDG_STATE_HOME` / `XDG_CACHE_HOME` 指向包内 `.local\` |
-| **GUI 外观** | 用户级 `NEOVIDE_CONFIG` → `<包>\bin\neovide.toml`（发行版随包分发，跟着包走） |
+| **GUI 外观** | 用户级 `NEOVIDE_CONFIG` → `<包>\bin\config.toml`（发行版随包分发，跟着包走） |
 
 > ⚠️ 所以**必须跑过 `install.cmd`**。不跑的话以上变量都不存在，只能手工
 > `bin\neovide.exe`，那时它会去找你 `%APPDATA%\nvim` 下的配置，而不是包里这份。
 
 ### 外观配置
 
-GUI 外观在随包的 [`bin/neovide.toml`](../bin/neovide.toml)：初始窗口尺寸
+GUI 外观在 Neovide 自己的配置里（`%APPDATA%\neovide\config.toml`）：初始窗口尺寸
 （`maximized`）、字体与中文回退链、框线风格。
 
 **只把文件放进 `bin/` 不会生效。** Neovide 只读 `%APPDATA%\neovide\config.toml`
 或 `NEOVIDE_CONFIG` 指向的路径；`bin/` 在 PATH 上只解决「能不能找到 `neovide.exe`」。
-`install.ps1` 会写 `NEOVIDE_CONFIG=<包>\bin\neovide.toml`，所以设置跟着包走，
+发行版**不再**写 `NEOVIDE_CONFIG`；需要改外观时直接编辑 Neovide 的 `config.toml`，
 不会写进你自己的 `%APPDATA%\neovide\config.toml`。
 
 两个字体相关的坑（都踩过）：
 
-> ⚠️ 默认字体不含中文字形。`bin/neovide.toml` 已配回退链
+> ⚠️ 默认字体不含中文字形。可在 `%APPDATA%\neovide\config.toml` 里配回退链
 > （Sarasa Mono SC → 新宋体 → Microsoft YaHei UI）。**如果这些你机器上都没有**，
 > 中文会显示成方块或字间出现空隙。换成你实际装了的等宽中文字体即可。
 > 查证方法：`neovide --log`，看 `Some configured fonts could not be loaded`
@@ -253,7 +253,7 @@ GUI 外观在随包的 [`bin/neovide.toml`](../bin/neovide.toml)：初始窗口�
 | 现象 | 原因 / 处理 |
 | --- | --- |
 | 终端里 `neovide` 找不到 | 没跑 `install.cmd`，或 PATH 未刷新（重开终端） |
-| 中文全是方块 / 字间有空隙 | `bin/neovide.toml` 的回退字体本机没有；用 `neovide --log` 查 |
+| 中文全是方块 / 字间有空隙 | `%APPDATA%\neovide\config.toml` 里的回退字体本机没有；用 `neovide --log` 查 |
 | 窗口很小、不像最大化 | `NEOVIDE_CONFIG` 没生效（没跑安装脚本，或 toml 缺失） |
 | 启动后是「裸 Neovim」 | `%LOCALAPPDATA%\nvim` junction 不存在或不指向本包 |
 | 双击 `.md` 没反应 | 文件关联没注册；重跑 `install.cmd` |
