@@ -186,21 +186,21 @@ Caused by: Invalid parameter
 
 用**随包的启动器**，不要直接开 `neovide.exe`。
 
-**Windows 双击启动用 `neovide.vbs`，不要双击 `neovide.cmd`。**
+**Windows 双击启动用 `bin\neovide.exe`，不要双击 `bin\neovide.exe`。**
 
 | 场景 | 用哪个 | 原因 |
 | --- | --- | --- |
-| 双击 / 快捷方式 | `neovide.vbs` | 批处理必然分配控制台窗口，双击后会一直留着那个黑窗口。`.vbs` 用 `WScript.Shell.Run` 以 `SW_HIDE` 启动，**完全没有窗口** |
-| 终端里、要看报错 | `neovide.cmd` | 错误直接打在终端里，便于排查 |
-| 拖文件到图标上 | `neovide.vbs` | 会把参数转发给 `neovide.cmd` |
+| 双击 / 快捷方式 | `bin\neovide.exe` | 批处理必然分配控制台窗口，双击后会一直留着那个黑窗口。`.vbs` 用 `WScript.Shell.Run` 以 `SW_HIDE` 启动，**完全没有窗口** |
+| 终端里、要看报错 | `bin\neovide.exe` | 错误直接打在终端里，便于排查 |
+| 拖文件到图标上 | `bin\neovide.exe` | 会把参数转发给 `bin\neovide.exe` |
 
 启动失败时 `.vbs` 会弹框提示退出码（因为此时没有控制台可看），并让你改用
-`neovide.cmd` 看详细错误。
+`bin\neovide.exe` 看详细错误。
 
 ```powershell
-# Windows：双击 neovide.vbs，或命令行
-.\neovide.vbs
-.\neovide.cmd docs\USAGE.md     # 要看到输出时用这个
+# Windows：双击 bin\neovide.exe，或命令行
+.\bin\neovide.exe
+.\bin\neovide.exe docs\USAGE.md     # 要看到输出时用这个
 ```
 
 ```sh
@@ -210,7 +210,7 @@ Caused by: Invalid parameter
 ```
 
 > 若双击 `.vbs` 毫无反应，多半是该机器用组策略禁用了 WSH
-> （`wscript.exe`）。此时改用 `neovide.cmd`，代价是会有一个控制台窗口。
+> （`wscript.exe`）。此时改用 `bin\neovide.exe`，代价是会有一个控制台窗口。
 
 ### 为什么必须用启动器
 
@@ -233,11 +233,11 @@ Neovide 自己负责拉起 `nvim` 进程，**不会读你仓库里的 `init.lua`
 
 ### 外观配置
 
-GUI 外观放在随包的 [`neovide.toml`](../neovide.toml) 里（字体、字号、框线），
+GUI 外观放在随包的 [`%APPDATA%\neovide\config.toml`](../%APPDATA%\neovide\config.toml) 里（字体、字号、框线），
 启动器会把它设成 `NEOVIDE_CONFIG` 指过去，因此**设置跟着包走**，
 不会写进你的 `%APPDATA%\neovide\config.toml`。
 
-> ⚠️ 默认字体不含中文字形。`neovide.toml` 里已配了 Sarasa Mono SC 与
+> ⚠️ 默认字体不含中文字形。`%APPDATA%\neovide\config.toml` 里已配了 Sarasa Mono SC 与
 > Microsoft YaHei 作为回退，**如果你的机器上这两个都没有**，中文会显示成方块。
 > 改成你实际装了的等宽中文字体即可。
 >
@@ -260,9 +260,9 @@ GUI 外观放在随包的 [`neovide.toml`](../neovide.toml) 里（字体、字�
 | 现象 | 原因 |
 | --- | --- |
 | `Cannot find Neovide` | 没装或不在 PATH；设 `NEOVIDE_EXE` |
-| 中文全是方块 | `neovide.toml` 里的回退字体本机没有 |
+| 中文全是方块 | `%APPDATA%\neovide\config.toml` 里的回退字体本机没有 |
 | 启动后是「裸 Neovim」 | 绕过了启动器直接开 `neovide.exe`，没带 `-u` |
-| 图标 / 字体不对 | 终端里正常、GUI 里不对 → 改 `neovide.toml` 的 `[font]` |
+| 图标 / 字体不对 | 终端里正常、GUI 里不对 → 改 `%APPDATA%\neovide\config.toml` 的 `[font]` |
 
 ---
 

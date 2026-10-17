@@ -80,10 +80,10 @@ D:\packednvim\          （Windows 示例）
 init.lua          入口
 nvim.cmd          Windows 终端启动脚本
 nvim.sh           Linux/macOS 启动脚本
-neovide.vbs       Windows 双击启动 GUI（无控制台窗口）
-neovide.cmd       Windows GUI 启动（终端里用，能看报错）
+bin\neovide.exe       Windows 双击启动 GUI（无控制台窗口）
+bin\neovide.exe       Windows GUI 启动（终端里用，能看报错）
 neovide.sh        Linux/macOS GUI 启动
-neovide.toml      随包的 GUI 外观配置（字体等）
+%APPDATA%\neovide\config.toml      随包的 GUI 外观配置（字体等）
 bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select / neovide）
 lua/distro/       配置本体
 pack/distro/      插件：start/ 启动即加载，opt/ 按键才加载
@@ -104,8 +104,8 @@ nvim.cmd
 
 **Windows（图形界面）**
 
-双击 `neovide.vbs`。它不会留下控制台窗口；启动失败会弹框告诉你退出码。
-要看详细报错就用 `neovide.cmd`（会有控制台窗口，错误直接打在里面）。
+双击任意已关联的文件（或直接运行 `bin\neovide.exe`）即打开 GUI 窗口；启动失败时 Neovide 会弹框给出退出码。
+要看详细报错就用 `bin\neovide.exe`（会有控制台窗口，错误直接打在里面）。
 
 没有随包 Neovide 的平台（Linux arm64、macOS）请自行安装，再用同一批
 `neovide.sh` 启动——启动器会负责 XDG 隔离。
@@ -224,7 +224,7 @@ uninstall.cmd
 `bin/neovide.exe` 约 34 MB，是这些启动器存在的前提。如果只需要终端 Neovim，
 可以删掉 `bin/neovide.exe` 与四个 `neovide.*` 文件，并同步移除
 `tools/package.ps1` 的 `INCLUDE` 条目和 `tools/fetch-tools.ps1` 的 neovide 规格。
-**当前的选择是两者都带**：终端入口 `nvim.cmd`，GUI 入口 `neovide.vbs` 双击即用。
+**当前的选择是两者都带**：终端入口 `nvim.cmd`，GUI 入口 `bin\neovide.exe` 双击即用。
 
 
 ---

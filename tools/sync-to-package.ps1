@@ -54,7 +54,7 @@ $items = @('init.lua', 'nvim.cmd', 'nvim.sh', 'neovide.cmd', 'neovide.sh', 'neov
 
 # 批处理必须 CRLF（cmd.exe 对 LF 结尾的多行 if(...) 块解析不可靠），
 # 所以这两类文件不能直接比哈希 / 直接拷贝。
-$crlfFiles = @('nvim.cmd', 'neovide.cmd', 'neovide.vbs')
+$crlfFiles = @('nvim.cmd', 'install.cmd', 'uninstall.cmd')
 
 # 逐文件比对。nvim.cmd 特殊处理，见下。
 function Compare-One([string]$rel) {
