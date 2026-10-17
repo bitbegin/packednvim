@@ -298,7 +298,7 @@ Say 'added "Open with packednvim"'
 Write-Host '=== 6. application registrations (visible in "Open with") ==='
 RegSetDefault 'Software\Classes\Applications\neovide.exe\shell\open\command' ('"' + $NeovideExe + '" "%1"')
 RegSetString 'Software\Classes\Applications\neovide.exe' 'FriendlyAppName' 'Neovide (packednvim)'
-RegSetString 'Software\Classes\Applications\neovide.exe' 'DefaultIcon' ( + ',0')
+RegSetString 'Software\Classes\Applications\neovide.exe' 'DefaultIcon' $IconValue
 foreach ($e in $Exts) { RegSetString 'Software\Classes\Applications\neovide.exe\SupportedTypes' ('.' + $e) '' }
 Say 'registered Neovide (packednvim)'
 
