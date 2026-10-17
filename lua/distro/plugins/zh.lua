@@ -26,14 +26,10 @@ return {
 
       -- 确认 cdylib 在位。缺了的话插件会在 require 时抛错 —— 与其让用户看到
       -- 一句看不懂的 module not found，不如在这里给出可操作的提示。
-      -- 扩展名必须与 jieba 自己的 loader 一致：windows -> .dll，其余（含 macOS）-> .so。
-      --
-      -- 注意这和 blink.cmp **不同**（它在 macOS 是 .dylib）。harvest.lua 的注释
-      -- 里记过这个坑，但复查发现我在 zh.lua 里还是把 macOS 写成了 .dylib ——
-      -- 那会让 darwin 包**误报**「缺少 cdylib」。macOS 用 .so 的证据有二：
-      -- harvest 按 .so 断言且 darwin-arm64 的 CI 构建一直通过；
-      -- release.yml 构建后校验的也是 .so。
-      local ext = jit.os == 'Windows' and '.dll' or '.so'
+      -- 扩展名规则统一取自 distro.platform（唯一权威来源）。
+      -- jieba 在 macOS 用 .so、blink 用 .dylib —— 区别的原因见 platform.lua。
+      -- （这里曾自己推导过一版，把 macOS 写错成 .dylib，导致 darwin 误报。）
+      local ext = require('distro.platform').lib_ext('jieba')
       local lib = (vim.g.distro_root or '')
         .. '/pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs' .. ext
       if vim.uv.fs_stat(lib) == nil then

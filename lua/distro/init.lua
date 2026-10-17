@@ -42,6 +42,30 @@ function M.setup()
     end
     -- 没有 setup 的模块（如 options）在 require 时就已完成工作
   end
+
+  -- 降级摘要：有任何组件没起来，启动时就用**一行**告诉用户 ——
+  -- 不刷屏，也绝不沉默。「checkhealth 里能看到」对不主动跑它的用户等于没有。
+  -- （本项目的多数弯路都源于静默降级：整份 options 被 E1512 杀掉、
+  --  pcall 吞掉 require 失败、目录同步悄悄嵌套 —— 全都不响。）
+  local degraded = {}
+  for k in pairs(M.failed) do
+    degraded[#degraded + 1] = '模块 ' .. k
+  end
+  local ok, reg = pcall(require, 'distro.plugins')
+  if ok and reg then
+    if #(reg.missing or {}) > 0 then
+      degraded[#degraded + 1] = '分组缺 ' .. table.concat(reg.missing, ',')
+    end
+    if reg.failed and next(reg.failed) then
+      degraded[#degraded + 1] = '插件配置失败 ' .. tostring(vim.tbl_count(reg.failed)) .. ' 个'
+    end
+  end
+  if #degraded > 0 then
+    vim.notify(
+      ('distro: %d 项降级（%s）。:checkhealth distro 看详情'):format(#degraded, table.concat(degraded, '；')),
+      vim.log.levels.WARN
+    )
+  end
 end
 
 return M

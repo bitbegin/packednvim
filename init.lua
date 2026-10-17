@@ -54,3 +54,20 @@ if vim.uv.fs_stat(runtime) then
 end
 
 require('distro').setup()
+
+-- 用户覆盖层：最后加载，让它赢过发行版的一切默认值。
+--
+-- 位置在 .local/config/user.lua（状态目录）：按文档的升级规则，保住 .local
+-- 就保住了你的定制 —— 改发行版自己的文件，升级时会被整体覆盖掉。
+-- 文件不存在则跳过；出错只报告，不让编辑器起不来（与发行版降级策略一致）。
+--
+-- 例：
+--   vim.cmd.colorscheme('kanagawa')
+--   vim.g.distro_disable = { 'mini.animate' }   -- （预留，见 USAGE.md）
+local user_cfg = root .. '/.local/config/user.lua'
+if vim.uv.fs_stat(user_cfg) then
+  local ok, err = pcall(dofile, user_cfg)
+  if not ok then
+    vim.notify('distro: 用户配置 .local/config/user.lua 出错：' .. tostring(err), vim.log.levels.ERROR)
+  end
+end

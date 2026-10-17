@@ -128,17 +128,14 @@ for _, lang in ipairs(probe) do
 end
 
 -- 平台相关的插件产物（由 workflow 在本脚本之前准备好）。
---
--- 扩展名必须与**插件自己的加载器**一致，而不是与「共享库的常见叫法」一致：
---   blink.cmp 的 get_lib_extension()：mac/osx -> .dylib，windows -> .dll，其余 .so
---   jieba.vim  的 loader：windows -> .dll，其余（含 macOS）-> .so
--- 曾经这里对三者统一用「windows ? .dll : .so」，于是 macOS 上把 .dylib 报成缺失 ——
--- **断言写错比没有断言更糟**，它会指出一个并不存在的问题。
-local os_name = jit.os:lower()
-local blink_ext = (os_name == 'windows' and '.dll')
-  or ((os_name == 'osx' or os_name == 'mac') and '.dylib')
-  or '.so'
-local jieba_ext = os_name == 'windows' and '.dll' or '.so'
+-- 扩展名规则统一取自 distro.platform（唯一权威来源）。
+-- 为什么要按插件分 family：扩展名必须与**各插件自己的加载器**一致 ——
+-- blink.cmp 的 get_lib_extension() 在 macOS 是 .dylib，
+-- 而 jieba.vim 的 loader 在 macOS 是 .so。曾经把两者统一推导，
+-- macOS 上把 .dylib 报成缺失 —— **断言写错比没有断言更糟**。
+local platform = require('distro.platform')
+local blink_ext = platform.lib_ext('blink')
+local jieba_ext = platform.lib_ext('jieba')
 
 local blink_lib = distro .. '/pack/distro/start/blink.cmp/target/release/libblink_cmp_fuzzy' .. blink_ext
 if vim.uv.fs_stat(blink_lib) == nil then

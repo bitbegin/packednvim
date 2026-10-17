@@ -106,7 +106,16 @@ $START_REPOS = @(
     'folke/flash.nvim',
     'chrisgrieser/nvim-spider',
     'keaising/im-select.nvim',
-    'kkew3/jieba.vim'
+    'kkew3/jieba.vim',
+    # 下面 5 个补进 start：它们的配置声明为常驻（pack='start'），
+    # 却曾被放进 opt/，靠注册表兜底 packadd —— 那是补丁不是设计。
+    # 「声明的加载策略」与「物理目录」一致，冒烟测试的
+    # reconciled==0 断言（tools/smoke.lua）才能成立。
+    'folke/ts-comments.nvim',
+    'mrjones2014/smart-splits.nvim',
+    'MeanderingProgrammer/render-markdown.nvim',
+    'folke/todo-comments.nvim',
+    'antosha417/nvim-lsp-file-operations'
 )
 
 # 少数仓库的**默认分支不能用**，必须指定分支或 tag：

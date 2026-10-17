@@ -243,6 +243,31 @@ jobs:
         shell: pwsh
         run: ./tools/package.ps1 -Platform ${{ matrix.id }}
 
+      # ---- 冒烟测试：启动刚打出来的包，验证它真的能用 ----------------------
+      # 此前 CI 只断言产物文件存在；jieba 的 macOS 扩展名错误（构建成功、
+      # 运行必炸）就是这么漏过去的。现在每个平台的 runner 用**它自己的包**
+      # 跑一遍断言：解压归档 -> 启动包内 nvim -> tools/smoke.lua。
+      # 断言含：11 分组载入、0 配置失败、解析器/工具/原生库就位、
+      # 声明与目录一致（reconciled==0）、以及历史踩过坑的运行时行为。
+      - name: 冒烟测试（解压并启动刚构建的包）
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $plat = '${{ matrix.id }}'
+          Remove-Item -Recurse -Force smoke-test -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory smoke-test | Out-Null
+          if ($IsWindows) {
+            $zip = Get-ChildItem dist/packednvim-$plat.zip
+            Expand-Archive $zip.FullName smoke-test
+            & smoke-test/packednvim/nvim.cmd --headless -l tools/smoke.lua
+          } else {
+            $tgz = Get-ChildItem dist/packednvim-$plat.tar.gz
+            tar -xzf $tgz.FullName -C smoke-test
+            chmod +x smoke-test/packednvim/nvim.sh
+            & bash smoke-test/packednvim/nvim.sh --headless -l tools/smoke.lua
+          }
+          if ($LASTEXITCODE -ne 0) { throw "冒烟测试失败（$plat）" }
+
       - uses: actions/upload-artifact@v4
         with:
           name: pkg-${{ matrix.id }}
