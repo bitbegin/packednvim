@@ -193,6 +193,17 @@ foreach ($file in Get-ChildItem -LiteralPath $Pkg -Recurse -File -ErrorAction Si
 }
 Write-Step "processed $unblocked files (no-op for files that had no mark)"
 
+# Neovim 在读取 init.lua **之前**就决定了日志路径（默认
+# %LOCALAPPDATA%\nvim-data\logs）。那个目录不存在时会打印
+#   log: "..." not accessible, logging to: "nvim.log"
+# 并在启动时拦一下回车。这里顺手建目录，只为消掉这条无害警告；
+# 配置与运行期状态仍然全部在包内 .local（见 init.lua 顶部）。
+$nvimLogDir = Join-Path $env:LOCALAPPDATA 'nvim-data\logs'
+if (-not (Test-Path -LiteralPath $nvimLogDir)) {
+    New-Item -ItemType Directory -Force -Path $nvimLogDir | Out-Null
+    Write-Host "  created $nvimLogDir (silences the startup log warning)"
+}
+
 Write-Host '=== 1. User PATH ==='
 $up = Get-UserPath
 if (($up -split ';') -contains $Bin) {
