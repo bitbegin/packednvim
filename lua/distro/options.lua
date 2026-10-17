@@ -134,7 +134,24 @@ opt.list = true
 -- 想要好看字形的话，得在「CJK 宽度正确」和「漂亮的 listchars」之间取舍 ——
 -- 对本发行版的目标用户（中文），前者更重要，所以选 ASCII 并在此写明原因。
 opt.listchars = { tab = '> ', trail = '-', nbsp = '+' }
-opt.fillchars = { eob = ' ', fold = ' ', foldopen = '-', foldclose = '+' }
+-- horiz / vert 是**窗口之间那条分隔线**的填充字符，默认是 `─` 和 `│`。
+--
+-- 为什么改成空格：`<leader>sG` 会把 quickfix 窗口开在下方（copen 默认 10 行），
+-- 于是在屏幕中间横出一条 `────…`。全局状态栏（laststatus=3）本来在最底部，
+-- 但那条分隔线的位置和外观都很像第二条状态栏，实际使用时极易误判成
+-- 「状态栏跑到中间去了」。改成空格后两个窗口看起来连成一片，
+-- 界面只剩底部那一条真正的状态栏，视觉噪音也少了。
+--
+-- 代价：分屏边界不再有线条提示，只能靠内容差异判断。若想恢复，
+-- 删掉 horiz/vert 两项即可（或显式设成 '─' / '│'）。
+opt.fillchars = {
+  eob = ' ',
+  fold = ' ',
+  foldopen = '-',
+  foldclose = '+',
+  horiz = ' ',
+  vert = ' ',
+}
 opt.pumheight = 12             -- 补全菜单最多 12 行，别挡住半个屏幕
 opt.winminwidth = 5
 opt.timeoutlen = 400           -- 等 which-key 弹出与组合键的超时
