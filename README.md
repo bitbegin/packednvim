@@ -81,6 +81,7 @@ python tools/check-stack.py                                   # 校验方案里�
 | [`docs/INSTALL.md`](docs/INSTALL.md) | **安装说明 + 安装原理**：前置条件、解压启动、验证与卸载；以及九条「不这么做就会出问题」的实测结论（packpath、XDG 隔离、解析器挂载、cmd 只认 ASCII 等） |
 | [`docs/USAGE.md`](docs/USAGE.md) | **怎么用**：按「要做的事」组织（搜索 / 中文 / LSP / 格式化 / 文件 / 会话），含缺失工具的影响 |
 | [`docs/KEYMAPS.md`](docs/KEYMAPS.md) | **快捷键速查**：由 `tools/gen-keymaps.py` 对比「干净 Neovim vs 本发行版」生成，不会与配置脱节 |
+| [`docs/TUTOR.md`](docs/TUTOR.md) | **🎮 快捷键训练营**：14 关游戏式练习（做对自动过关、计分、连击、段位），题目全部取自本发行版真实键位 |
 | [`docs/SEARCH-WORKFLOW.md`](docs/SEARCH-WORKFLOW.md) | 需求 5 的完整方案：`grepprg` 配置、quickfix 鼠标跳转映射、大文件降级代码、rg 与 fzf-lua 两条路线的取舍 |
 | [`docs/RESEARCH-NOTES.md`](docs/RESEARCH-NOTES.md) | 调研原始事实与来源：版本代际、管理器对比、依赖矩阵、可移植二进制来源、离线翻车清单 |
 | [`bin/README.md`](bin/README.md) | 随包分发的工具：版本、SHA256、许可证、注意事项 |
