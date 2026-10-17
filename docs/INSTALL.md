@@ -165,7 +165,7 @@ nvim --headless -u init.lua -c "lua print(#vim.api.nvim_get_runtime_file('parser
 **跑过 `install.cmd` / `install.sh`**：先撤销系统改动，再删目录。
 
 ```bat
-install.cmd /u
+uninstall.cmd
 ```
 
 ```bash
@@ -188,7 +188,7 @@ install.cmd /u
 | 文件关联 | `.md` / `.markdown` → `packednvim.<ext>` | 写 `packednvim.desktop` 并 `xdg-mime default` |
 | 右键菜单 | 所有文件类型加「Open with packednvim」 | 文件管理器的「打开方式」里出现 Neovim (packednvim) |
 | 自定义扩展名 | `install.cmd md txt json` | `./install.sh md txt json` |
-| 撤销 | `install.cmd /u` | `./install.sh --uninstall` |
+| 撤销 | `uninstall.cmd` | `./install.sh --uninstall` |
 
 **想彻底不用 `.cmd`（直接指向 exe）**：加 `-Direct` 参数
 （`powershell -File install.ps1 -Direct -Ext md,txt`）。关联命令变成
