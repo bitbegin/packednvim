@@ -177,8 +177,29 @@ function M.grep_word()
   M.run({ '--fixed-strings', word }, 'rg: ' .. word)
 end
 
--- 默认 picker 已定为 fzf-lua；没装时退回 quickfix
-local function fzf_grep()
+-- <leader>sg 的实现选择：**默认走 quickfix，而不是 fzf 的实时界面**。
+--
+-- 原因（来自实际使用，不是推断）：fzf 的实时 grep 界面在这台机器上会出现
+-- 「残留字符」——查询被清空、列表变空时，上一次搜索的文字碎片留在屏幕上，
+-- 只有整屏重绘（改窗口大小）才消失。
+--
+-- 排查过程与结论：
+--   - 换成 PowerShell 与 Alacritty **两个终端都复现** -> 不是终端问题；
+--   - 去掉预览窗口 -> 仍复现 -> 不是预览的问题；
+--   - --no-unicode / 具体字形 / --separator -> 只影响 `--` 分隔线，与此无关；
+--   - termsync / ttyfast（Neovim 的输出批处理与重绘优化）-> 关掉仍复现。
+-- 也就是说：这是 fzf 的实时列表在 Neovim 终端缓冲区里的刷新问题，
+-- 从配置层面没有可表达的开关。
+--
+-- 所以这里做一个明确的取舍：**搜索的可靠性优先于实时预览**。
+-- <leader>sg 走 rg + quickfix（同 <leader>sG 那条已验证可用的路径，
+-- 只是先用输入框问模式），结果按行进窗口、可点击跳转。
+--
+-- fzf 仍然用于 <leader>f*（文件查找）——那里的列表是静态的，
+-- 没有逐键刷新的实时列表，不受这个问题影响。
+--
+-- 想恢复实时 grep：把下面 M._live_grep_fzf 的调用换回 fzf.live_grep({ previewer = false })。
+function M._live_grep_fzf()
   local ok, fzf = pcall(require, 'fzf-lua')
   if not ok then
     return false
@@ -189,22 +210,8 @@ local function fzf_grep()
   if type(fn) ~= 'function' then
     return false
   end
-
-  -- 关掉预览窗口。
-  --
-  -- 原因：实时 grep 的预览区在实际使用中会出现「残留字符」（散落如星点），
-  -- 而且**放大窗口就消失、再输入再清空又出现** —— 那是重绘才能修好的显示残留。
-  -- 「下面的窗口」正是预览区，所以先把它去掉：界面干净，同时也能验证
-  -- 问题确实出在预览。
-  --
-  -- 代价：看不到匹配处的上下文。列表、选择、跳转、多选都不受影响；
-  -- 想看上下文时可以直接跳到结果里，或用 <leader>f* 那一套。
-  --
-  -- 如果去掉预览后残留字符仍在，说明问题不在预览，而在主窗口/遮罩层，
-  -- 那时要往别的方向查（而不是继续调预览）。
   local ok2 = pcall(fn, { previewer = false })
   if not ok2 then
-    -- 旧版 fzf-lua 若不接受该参数，退回默认行为，不要让搜索按键失效
     pcall(fn)
   end
   return true
@@ -283,11 +290,14 @@ end
 function M._setup_keymaps()
   local map = vim.keymap.set
 
-  map('n', '<leader>sg', function()
-    if not fzf_grep() then
-      M.grep_project()
-    end
-  end, { desc = '搜索：实时 grep（fzf-lua，鼠标双击即跳）' })
+  -- <leader>sg 走 rg + quickfix：这是你已经验证可用的那条路径。
+  -- 它不经过 fzf 的实时列表，因此没有显示残留问题。
+  map('n', '<leader>sg', M.grep_project, { desc = '搜索：输入模式后进 quickfix' })
+
+  -- 实时 grep 保留在另一个键上：等 fzf 的显示残留问题有了结论，可以切回去。
+  map('n', '<leader>sl', function()
+    M._live_grep_fzf()
+  end, { desc = '搜索：实时 grep（fzf，当前存在显示残留）' })
 
   map('n', '<leader>sG', M.grep_project, { desc = '搜索：正则进 quickfix' })
   map('n', '<leader>su', function()
