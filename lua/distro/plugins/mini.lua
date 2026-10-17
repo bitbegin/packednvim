@@ -101,6 +101,9 @@ return {
                 { name = '查找文件          <leader>ff', action = 'lua require("fzf-lua").files()', section = '操作' },
                 { name = '全项目搜索        <leader>sg', action = 'lua require("fzf-lua").grep_project()', section = '操作' },
                 { name = '最近文件          <leader>fr', action = 'lua require("distro.plugins.misc").recent_files()', section = '操作' },
+                -- 训练营放在启动页是为了「被看见」：14 关练习全在 Lua 模块里，
+                -- 不进启动页的话，除了读文档没人会知道有这个功能。
+                { name = '快捷键训练营      <leader>tt', action = 'lua require("distro.tutor").start()', section = '操作' },
                 { name = '恢复会话', action = 'lua MiniSessions.select()', section = '操作' },
                 { name = '恢复上次搜索    <leader>ss', action = 'lua require("fzf-lua").resume()', section = '操作' },
                 { name = '健康检查          :checkhealth distro', action = 'checkhealth distro', section = '帮助' },
