@@ -8,6 +8,10 @@ bin/*            -text -diff
 bin/*.md         text diff
 bin/*.json       text
 bin/licenses/**  text
+# neovide.toml 是配置文件而不是二进制 —— 必须覆盖上面的 bin/* -text -diff，
+# 否则它会被当成二进制：不做换行归一化，git diff 也看不到改动。
+# 三项都要显式写，因为 bin/* 把 text 和 diff 都关掉了。
+bin/*.toml       text eol=lf diff
 
 # 必须在 Linux 上原样运行的脚本：强制 LF。
 # 不然某天在 Windows 上编辑后存成 CRLF，shebang 会带上 \r 而直接执行失败。
