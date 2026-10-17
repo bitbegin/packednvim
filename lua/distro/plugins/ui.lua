@@ -35,7 +35,21 @@ return {
             { 'filename', path = 1, symbols = { modified = ' ●', readonly = ' ' } },
             { 'diagnostics', sources = { 'nvim_lsp' }, symbols = { error = 'E', warn = 'W', info = 'I', hint = 'H' } },
           },
-          lualine_x = { 'filetype', 'encoding', 'fileformat' },
+          lualine_x = {
+          'filetype',
+          -- encoding 用自定义组件，**不用**内置的 'encoding'。
+          -- 原因：lualine 内置实现是 vim.opt.fileencoding:get()，在本 nightly
+          -- （0.13-dev-1828）上**无条件抛 E21**（普通缓冲也能复现，不是
+          -- nomodifiable 的问题）。多数刷新路径被 lualine 自己的 pcall 静默吞掉，
+          -- 但 scheduled 刷新会把错误弹出来要求按回车，非常打扰。
+          -- 这里用 vim.bo 读取等价信息（含 BOM 标记），读操作永不抛 E21。
+          -- （fileformat.lua 用的是 vim.bo.fileformat，无此问题，保留内置组件。）
+          function()
+            local enc = vim.bo.fileencoding ~= '' and vim.bo.fileencoding or vim.o.encoding
+            return vim.bo.bomb and (enc .. ' [BOM]') or enc
+          end,
+          'fileformat',
+        },
           lualine_y = { 'progress' },
           lualine_z = { 'location' },
         },
