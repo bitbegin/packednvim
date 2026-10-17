@@ -42,9 +42,19 @@ function Set-UserPath([string]$value) {
     [Environment]::SetEnvironmentVariable('Path', $value, 'User')
 }
 
+function ConvertTo-RegSubKey([string]$key) {
+    $key -replace '^HKCU:\\', '' -replace '^HKEY_CURRENT_USER\\', ''
+}
+
 function Set-Default([string]$key, [string]$value) {
     if (-not (Test-Path -LiteralPath $key)) { New-Item -Path $key -Force | Out-Null }
-    Set-ItemProperty -LiteralPath $key -Name '(default)' -Value $value -Force
+    # 不要用 Set-ItemProperty -Name '(default)'：实测它建出的是**名为 "(default)"
+    # 的普通值**，而不是真正的默认值，Explorer 因此完全看不到这个关联
+    # （症状：双击仍打开别的程序、assoc .md 查不到）。用 .NET 写空名值才对。
+    $sub = ConvertTo-RegSubKey $key
+    $reg = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($sub)
+    $reg.SetValue('', $value, [Microsoft.Win32.RegistryValueKind]::String)
+    $reg.Close()
 }
 
 function Set-Prop([string]$key, [string]$name, [string]$value) {
@@ -53,7 +63,11 @@ function Set-Prop([string]$key, [string]$name, [string]$value) {
 }
 
 function Get-Default([string]$key) {
-    (Get-ItemProperty -LiteralPath $key -Name '(default)' -ErrorAction SilentlyContinue).'(default)'
+    $reg = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey((ConvertTo-RegSubKey $key))
+    if (-not $reg) { return $null }
+    $v = $reg.GetValue('')
+    $reg.Close()
+    $v
 }
 
 # ---------------------------------------------------------------------------
