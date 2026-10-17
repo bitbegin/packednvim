@@ -177,28 +177,19 @@ function M.grep_word()
   M.run({ '--fixed-strings', word }, 'rg: ' .. word)
 end
 
--- <leader>sg 的实现选择：**默认走 quickfix，而不是 fzf 的实时界面**。
+-- <leader>sg 的实现：fzf 实时 grep（原设计），quickfix 兜底。
 --
--- 原因（来自实际使用，不是推断）：fzf 的实时 grep 界面在这台机器上会出现
--- 「残留字符」——查询被清空、列表变空时，上一次搜索的文字碎片留在屏幕上，
--- 只有整屏重绘（改窗口大小）才消失。
+-- 曾经因为「残留碎片」问题把 sg 临时改走 quickfix、把实时 grep 挪到 sl，
+-- 并关掉了预览 —— 全是诊断期的临时手段。根因后来定位到
+-- options.lua 的 ambiwidth=double（Neovim 与 fzf 对歧义宽度字符的
+-- 宽度判定不一致，终端缓冲区网格错位），改为 single 且经实测确认后，
+-- 这些临时手段的前提全部消失，按原设计恢复：
+--   sg = fzf 实时 grep（带预览），fzf 不可用时退回 quickfix
+--   sG = 正则搜索进 quickfix（原样，未动过）
+-- 临时键 sl 已移除。
 --
--- 排查过程与结论：
---   - 换成 PowerShell 与 Alacritty **两个终端都复现** -> 不是终端问题；
---   - 去掉预览窗口 -> 仍复现 -> 不是预览的问题；
---   - --no-unicode / 具体字形 / --separator -> 只影响 `--` 分隔线，与此无关；
---   - termsync / ttyfast（Neovim 的输出批处理与重绘优化）-> 关掉仍复现。
--- 也就是说：这是 fzf 的实时列表在 Neovim 终端缓冲区里的刷新问题，
--- 从配置层面没有可表达的开关。
---
--- 所以这里做一个明确的取舍：**搜索的可靠性优先于实时预览**。
--- <leader>sg 走 rg + quickfix（同 <leader>sG 那条已验证可用的路径，
--- 只是先用输入框问模式），结果按行进窗口、可点击跳转。
---
--- fzf 仍然用于 <leader>f*（文件查找）——那里的列表是静态的，
--- 没有逐键刷新的实时列表，不受这个问题影响。
---
--- 想恢复实时 grep：把下面 M._live_grep_fzf 的调用换回 fzf.live_grep({ previewer = false })。
+-- 若显示残留问题再出现：先查 ambiwidth（见 INSTALL.md 字符宽度一节），
+-- 不要直接跳回「关预览/换 quickfix」这类手段 —— 它们治标且会一直留着。
 function M._live_grep_fzf()
   local ok, fzf = pcall(require, 'fzf-lua')
   if not ok then
@@ -210,10 +201,7 @@ function M._live_grep_fzf()
   if type(fn) ~= 'function' then
     return false
   end
-  local ok2 = pcall(fn, { previewer = false })
-  if not ok2 then
-    pcall(fn)
-  end
+  pcall(fn)
   return true
 end
 
@@ -290,14 +278,13 @@ end
 function M._setup_keymaps()
   local map = vim.keymap.set
 
-  -- <leader>sg 走 rg + quickfix：这是你已经验证可用的那条路径。
-  -- 它不经过 fzf 的实时列表，因此没有显示残留问题。
-  map('n', '<leader>sg', M.grep_project, { desc = '搜索：输入模式后进 quickfix' })
-
-  -- 实时 grep 保留在另一个键上：等 fzf 的显示残留问题有了结论，可以切回去。
-  map('n', '<leader>sl', function()
-    M._live_grep_fzf()
-  end, { desc = '搜索：实时 grep（fzf，当前存在显示残留）' })
+  -- <leader>sg = fzf 实时 grep（原设计，带预览；fzf 不可用则退回 quickfix）。
+  -- 显示残留的根因（ambiwidth）已在 options.lua 修复，详见 M._live_grep_fzf 的注释。
+  map('n', '<leader>sg', function()
+    if not M._live_grep_fzf() then
+      M.grep_project()
+    end
+  end, { desc = '搜索：实时 grep（fzf-lua，鼠标双击即跳）' })
 
   map('n', '<leader>sG', M.grep_project, { desc = '搜索：正则进 quickfix' })
   map('n', '<leader>su', function()

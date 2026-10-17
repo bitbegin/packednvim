@@ -88,17 +88,18 @@ return {
         --
         -- 默认值参考：pointer=▌(U+258C)、marker=┃(U+2503)、scrollbar=│(U+2502)，
         -- 三者都是东亚「歧义宽度」字符。
-        fzf_opts = {
-          -- --no-unicode 是**实测有效**的那一个：你反馈「加上它 `--` 就没了，
-          -- 去掉它 `--` 又回来」。中间我试过只覆盖 pointer/marker/scrollbar/
-          -- separator 这几个具体字形，`--` 仍然存在 —— 说明还有别的绘制字符
-          -- 在歧义宽度下错位，而逐个找下去成本很高。
-          -- 所以退回这个已经验证过的开关：让 fzf 全部用 ASCII 绘制。
-          --
-          -- 代价是失去方块字形。但请注意：**星星与它无关**（有它没它都在），
-          -- 所以不要因为星星而把它去掉。
-          ['--no-unicode'] = true,
-        },
+        -- 这里**故意不设** fzf_opts 的 --no-unicode。
+        --
+        -- 演化记录：排查「残留碎片」问题时，曾把 fzf 整个切成 ASCII 绘制
+        -- （--no-unicode），当时它确实修掉了两根 `--` 分隔线。但真正的根因
+        -- 是 options.lua 里 ambiwidth=double 让 Neovim 与 fzf 对歧义宽度字符
+        -- 的宽度判定不一致 —— 改为 ambiwidth=single 后，`─` 在两边都是 1 格，
+        -- fzf 的 Unicode 界面本来就不再错位。
+        --
+        -- 保留 --no-unicode 的唯一效果是把界面降级成 ASCII，与
+        -- 「Nerd Font 强依赖」的设计相悖，所以撤掉。
+        -- 若分隔线/字形再出现错位，先查 ambiwidth（见 INSTALL.md 字符宽度一节），
+        -- 不要再回到这个开关。
 
         winopts = {
           height = 0.85,

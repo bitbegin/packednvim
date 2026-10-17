@@ -26,7 +26,11 @@ return {
 
       -- 确认 cdylib 在位。缺了的话插件会在 require 时抛错 —— 与其让用户看到
       -- 一句看不懂的 module not found，不如在这里给出可操作的提示。
-      local ext = jit.os:lower() == 'windows' and '.dll' or '.so'
+      -- 注意：cdylib 的扩展名随平台不同（CI 的 harvest 脚本按平台产出），
+      -- 最初这里只写了 .dll/.so 两分支，macOS 的 .dylib 被漏掉 ——
+      -- 结果 darwin 包上会**误报**「缺少 cdylib」，误导用户去找不存在的问题。
+      local ext = ({ Windows = '.dll', Linux = '.so', OSX = '.dylib', BSD = '.so', POSIX = '.so' })[jit.os]
+        or '.so'
       local lib = (vim.g.distro_root or '')
         .. '/pack/distro/start/jieba.vim/lua/jieba_vim/jieba_vim_rs' .. ext
       if vim.uv.fs_stat(lib) == nil then
