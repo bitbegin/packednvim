@@ -8,6 +8,10 @@
 --   .\nvim.cmd --headless -l <仓库>/tools/smoke.lua     # Windows
 --   ./nvim.sh  --headless -l <仓库>/tools/smoke.lua     # Linux / macOS
 -- 任何断言失败 -> 非零退出码 -> 构建标红。
+--
+-- 报告原则：失败时必须**自带定位信息**（哪个插件、什么错、:messages 里
+-- 还有什么）。第一版只报数量，darwin 首跑抓到一个配置失败却看不出
+-- 是谁 —— 看不出原因的失败报告等于让人再跑一遍。
 
 local failures = {}
 local n = 0
@@ -27,10 +31,16 @@ local platform = require('distro.platform')
 -- ---- 1. 配置分组 -------------------------------------------------------
 local reg = require('distro.plugins')
 local nf = 0
-for _ in pairs(reg.failed or {}) do nf = nf + 1 end
+local failed_detail = {}
+for k, v in pairs(reg.failed or {}) do
+  nf = nf + 1
+  failed_detail[#failed_detail + 1] = k .. '：' .. tostring(v):gsub('\n.*', '')
+end
 check('11 个配置分组全部载入', #(reg.groups or {}) == 11, (#(reg.groups or {})) .. ' 个')
 check('无缺失分组', #(reg.missing or {}) == 0, table.concat(reg.missing or {}, ','))
-check('无插件配置失败', nf == 0, nf .. ' 个')
+check('无插件配置失败', nf == 0, (#failed_detail > 0)
+  and (nf .. ' 个 -> ' .. table.concat(failed_detail, '；'))
+  or '0 个')
 check('声明与实际目录一致', #(reg.reconciled or {}) == 0,
   (#(reg.reconciled or {})) .. ' 处：' .. table.concat(reg.reconciled or {}, '；'))
 
@@ -79,6 +89,20 @@ end
 
 io.write(('[smoke] %s：%d 项检查，%d 项失败  (distro_root=%s)\n')
   :format(#failures == 0 and '通过' or '失败', n, #failures, root))
+
 if #failures > 0 then
+  -- 启动期的 vim.notify（包括注册表记录的配置错误、插件脚本报错）都进
+  -- :messages 历史；headless 下它们不打印到 stdout，这里主动倒出来，
+  -- 让失败日志**自解释**，不用再翻 Actions 的完整日志。
+  local msgs = vim.fn.execute('messages')
+  if msgs and #msgs > 0 then
+    io.write('\n[smoke] :messages 尾部（定位用）：\n')
+    local lines = vim.split(msgs, '\n')
+    for i = math.max(1, #lines - 30), #lines do
+      if lines[i] ~= '' then
+        io.write('  ' .. lines[i] .. '\n')
+      end
+    end
+  end
   os.exit(1)
 end
