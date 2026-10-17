@@ -50,24 +50,45 @@ return {
   },
 
   {
-    names = 'render-markdown.nvim',
-    pack = 'start',
+    names = 'markview.nvim',
+    pack = 'opt',
     setup = function()
-      -- 它的 setup 只是在 markdown 文件类型上挂 autocmd，对其它文件无影响，
-      -- 所以放 start 而不是懒加载（懒加载还要额外处理「打开 md 时也要生效」）。
-      local ok, render = pcall(require, 'render-markdown')
+      -- Typora 式 hybrid 编辑：光标所在节点显示源码、其余渲染成成品。
+      --
+      -- 为什么声明 opt 却在启动时 packadd：它自带 plugin/markview.lua，
+      -- 靠 FileType/BufRead 钩子按文件类型启用；真正的「懒」由它自己做。
+      -- 上游 README 明确警告「不要再用 lazy 包一层」，否则预览出现得更慢。
+      -- 与 render-markdown 的关系：两者互斥（同时开会互相覆盖虚拟文本），
+      -- 已在 catalog 的同一互斥格里，这里只装 markview 一个。
+      local ok, markview = pcall(require, 'markview')
       if not ok then return end
-      pcall(render.setup, {
-        -- 中文排版：标题与列表的对齐依赖字符宽度（ ambiwidth 现为 single，
-        -- 歧义字符按 1 格算），这里关掉「用字符拼出来的装饰」，
-        -- 只保留标题符号、项目符号、代码块背景这类宽度无关的渲染。
-        heading = { sign = false, icons = { ' ', ' ', ' ', ' ', ' ', ' ' } },
-        bullet = { enabled = true },
-        code = { style = 'full', border = 'thin' },
-        checkbox = { enabled = true },
-        -- 表格与链接的虚拟文本在中文下也对不齐，先关掉
-        link = { enabled = false },
+
+      pcall(markview.setup, {
+        preview = {
+          -- 该选项是**模式白名单**，不是「默认值」：留空等于 hybrid 永不启用。
+          -- 只开 normal（浏览时渲染、一进插入/可视就退回原文，避免边打字边
+          -- 重排导致的跳动），这正是 Typora 的手感。想连插入模式也渲染，
+          -- 把 'i' 加进来即可。
+          hybrid_modes = { 'n' },
+          -- 光标所在行上下各保留 0 行原文：只有光标真正所处的那一段是源码。
+          edit_range = { 0, 0 },
+          -- 图标沿用发行版主用的 mini.icons（ui.lua 里已经接好 MiniIcons）；
+          -- 备选值是 "internal" 与 "devicons"。
+          icon_provider = 'mini',
+        },
+        markdown = {
+          headings = {
+            -- 关掉「org 式按层级缩进」。中文排版下缩进会让标题与正文的
+            -- 视觉对齐变得可疑，且它依赖字符宽度计算（本项目 ambiwidth=single）。
+            -- 0 表示不额外加缩进字符，标题靠字号/颜色区分。
+            org_shift_width = 0,
+          },
+        },
       })
+
+      -- 手动开关。默认已按上面的白名单启用，这里只是给一个随时切回去的入口。
+      vim.keymap.set('n', '<leader>um', '<cmd>Markview HybridToggle<cr>',
+        { desc = '开关：Markdown 渲染（hybrid）' })
     end,
   },
 

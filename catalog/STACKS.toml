@@ -140,7 +140,7 @@ plugins = [
   "folke/trouble.nvim",
   "stevearc/oil.nvim",
   # --- 写作 ---
-  "MeanderingProgrammer/render-markdown.nvim",
+  "OXY2DEV/markview.nvim",
   "folke/todo-comments.nvim",
   # --- 中文 ---
   "keaising/im-select.nvim",
@@ -259,7 +259,7 @@ plugins = [
   "kristijanhusak/vim-dadbod-completion",
   "mistweaverco/kulala.nvim",
   # --- 写作与笔记 ---
-  "MeanderingProgrammer/render-markdown.nvim",
+  "OXY2DEV/markview.nvim",
   "folke/todo-comments.nvim",
   "dhruvasagar/vim-table-mode",
   "nvim-orgmode/orgmode",

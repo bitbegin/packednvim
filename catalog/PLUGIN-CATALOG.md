@@ -284,7 +284,8 @@
 
 - [x] **folke/todo-comments.nvim** · 作用：高亮并可全局搜索 TODO / FIXME / NOTE / HACK · 依赖：纯 Lua · 档位：core · 许可：Apache-2.0
 - [ ] **dhruvasagar/vim-table-mode** · 作用：Markdown 与 org 表格自动对齐、公式计算 · 依赖：纯 Lua · 档位：ide · 许可：MIT
-- [x] **MeanderingProgrammer/render-markdown.nvim** · 作用：在缓冲区里渲染 Markdown 的标题、表格、代码块、勾选框 · 依赖：纯 Lua · 档位：ide · 许可：MIT · 备注：需要 Nerd Font 与正确的字符宽度设置，否则表格错位
+- [ ] **MeanderingProgrammer/render-markdown.nvim** · 作用：在缓冲区里渲染 Markdown 的标题、表格、代码块、勾选框 · 依赖：纯 Lua · 档位：ide · 许可：MIT · 备注：需要 Nerd Font 与正确的字符宽度设置，否则表格错位；**与 markview.nvim 同格互斥**（只渲染、无 hybrid 模式），已让位给 markview
+- [x] **OXY2DEV/markview.nvim** · 作用：Typora 式 hybrid 编辑（光标所在节点显示源码、其余渲染），另有 splitview 并排预览 · 依赖：纯 Lua · 档位：ide · 许可：MIT · 备注：硬依赖是 `markdown` + `markdown_inline` 解析器，**Neovim 0.13 已内置**
 - [ ] **nvim-orgmode/orgmode** · 作用：org-mode 复刻，待办、日程、导出 · 依赖：纯 Lua · 档位：extra · 许可：MIT · 备注：要求 Neovim ≥ 0.12
 - [ ] **obsidian-nvim/obsidian.nvim** · 作用：Obsidian 仓库的笔记、双向链接、模板 · 依赖：纯 Lua · 档位：extra · 许可：Apache-2.0 · 备注：原 epwalsh/obsidian.nvim 的活跃继任者
 - [ ] **iamcco/markdown-preview.nvim** · 作用：浏览器中的实时 Markdown 预览 · 依赖：编译/下载 · 档位：extra · 许可：MIT · 备注：默认需要 node + yarn，或首次运行时下载预编译产物；离线包必须预先放入

@@ -387,6 +387,18 @@
       "clone_url": "https://github.com/nvim-treesitter/nvim-treesitter-textobjects.git"
     },
     {
+      "repo": "OXY2DEV/markview.nvim",
+      "dir": "pack/distro/opt/markview.nvim",
+      "pack": "opt",
+      "branch": "main",
+      "commit": "49d2cf7ced872db74083a144ded1f94fe224d09a",
+      "bytes": 1592966,
+      "license_files": [
+        "LICENSE"
+      ],
+      "clone_url": "https://github.com/OXY2DEV/markview.nvim.git"
+    },
+    {
       "repo": "rafamadriz/friendly-snippets",
       "dir": "pack/distro/start/friendly-snippets",
       "pack": "start",

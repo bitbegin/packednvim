@@ -114,3 +114,7 @@ python tools/check-stack.py                                   # 校验方案里�
 - **git 代理已修正**为 `http://127.0.0.1:7892`，与系统代理一致，vendoring 可用。
 - 你的代理会间歇性拒绝 TLS 握手，也会中途断流，所以 `tools/fetch-tools.ps1` 用的是「限时重试 + 断点续传」，而不是 `curl --retry`（`--retry` 对「传输停滞」不生效）。
 - 受限模式下有两个限制：Windows 的 TLS 凭据被拒绝（`schannel: SEC_E_NO_CREDENTIALS`），任何联网命令都要放行；Neovim 也无法创建子进程，所以 `tests/run.ps1` 必须在放行后或沙箱外运行。
+## 更新与升级
+
+插件 commit 钉点、`bin/` 工具、Neovim 本体与解析器分别怎么升、升完必须做哪些校验、
+以及回退方法，见 [docs/UPGRADE.md](docs/UPGRADE.md)。

@@ -63,6 +63,11 @@ SLOTS: dict[str, list[str]] = {
     "大文件降级": ["LunarVim/bigfile.nvim", "ouuan/nvim-bigfile"],
     "终端管理": ["akinsho/toggleterm.nvim", "chomosuke/term-edit.nvim"],
     "LSP 安装器": ["neovim/nvim-lspconfig", "mason-org/mason.nvim"],
+    # 两者都在缓冲区里**内联**渲染 Markdown，同时开会互相覆盖虚拟文本
+    # （表现为表格错位、标题符号重复），所以互斥。
+    # 注意 markdown-preview.nvim 不在本格：它渲染到浏览器，不与内联渲染
+    # 争同一批 extmark，可以和它们共存。
+    "Markdown 内联渲染": ["OXY2DEV/markview.nvim", "MeanderingProgrammer/render-markdown.nvim"],
 }
 
 
