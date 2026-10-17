@@ -38,7 +38,7 @@ if (-not $DistroDir) { $DistroDir = Join-Path $root 'dist' }
 # 运行期需要的；catalog/ tools/ tests/ 是开发用的，不进包
 # neovide.* 是 GUI 启动器与它的外观配置：没有它们，bin/neovide.exe 就是纯死重量
 # （用户只能手动写长命令行，很容易漏掉 XDG 隔离）。
-$INCLUDE = @('init.lua', 'nvim.cmd', 'nvim.sh', 'neovide.cmd', 'neovide.sh', 'neovide.toml', 'neovide.vbs', 'lua', 'pack', 'bin', 'vendor', 'runtime', 'docs', 'README.md', 'install.cmd', 'uninstall.cmd', 'install.sh', 'install.ps1', 'uninstall.ps1')
+$INCLUDE = @('init.lua', 'nvim.cmd', 'nvim.sh', 'neovide.sh', 'lua', 'pack', 'bin', 'vendor', 'runtime', 'docs', 'README.md', 'install.cmd', 'uninstall.cmd', 'install.sh', 'install.ps1', 'uninstall.ps1')
 
 $stage = Join-Path $DistroDir 'packednvim'
 Write-Host ("=== 组装 {0} ===" -f $Platform) -ForegroundColor Cyan

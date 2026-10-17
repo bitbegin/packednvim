@@ -199,6 +199,8 @@ uninstall.cmd
 那套隔离不生效，运行期状态（undo、shada、byte-code 缓存）落到系统默认位置
 （`%LOCALAPPDATA%\nvim-data`）。配置本身仍正确，因为 `-u` 明确指向本发行版
 的 `init.lua`。要完整隔离就用默认模式（经 `nvim.cmd`）。
+**不想手工敲命令**：直接双击包根目录的 `install.cmd`——它会一次完成 junction、PATH、环境变量、文件关联、右键项与状态记录（约 7 秒）。撤销用 `uninstall.cmd`。
+
 **关于「双击 .md 仍然问一次用哪个程序」**：这是 Windows 的设计，不是脚本没写好。
 最终生效的默认程序由 `UserChoice` 决定，而这个键带哈希校验，**只有系统对话框
 能合法写入**；脚本能做的是把本发行版注册进「打开方式」列表。在对话框里选一次
@@ -215,10 +217,8 @@ uninstall.cmd
 
 | 文件 | 用途 | 为什么不能省 |
 | --- | --- | --- |
+| `bin\neovide.exe`（直接双击/关联） | GUI（Neovide） | 配置经 junction 发现、状态经用户级 XDG 变量定位，所以不需要任何包装脚本 |
 | `nvim.cmd` / `nvim.sh` | 终端 Neovim | 唯一设置 4 个 XDG 变量 + `TMPDIR` + `PATH` 前置并传 `-u init.lua` 的地方；去掉就会读系统配置 |
-| `neovide.cmd` / `neovide.sh` | GUI（Neovide） | Neovide 自己 spawn nvim，环境变量必须在这里设好才会被继承，否则 GUI 里的 nvim 不走本发行版配置 |
-| `neovide.vbs` | GUI 的**无黑窗**入口 | `.cmd` 必然分配控制台窗口，`start /min` 压不掉；VBS 用 `WScript.Shell.Run` 隐藏启动，双击才是一个干净的 GUI 窗口 |
-| `neovide.toml` | GUI 外观配置 | 启动器用 `NEOVIDE_CONFIG` 指过来，配置跟着包走、不污染 `%APPDATA%` |
 | `install.cmd` / `install.sh` / `install.ps1` | 安装 / 卸载 | 见上一节 |
 
 `bin/neovide.exe` 约 34 MB，是这些启动器存在的前提。如果只需要终端 Neovim，
