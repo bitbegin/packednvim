@@ -162,7 +162,7 @@ Lua 的 `luacheck` 没有官方预编译产物，需自行安装或构建——�
 | macOS arm64 | ❌ | 上游只发布 `.dmg`（`tar` 处理不了） |
 
 后两个平台启动器会明确报错并提示装法，`:checkhealth distro` 也会说明，
-**不影响终端模式**——`nvim.cmd` / `nvim.sh` 照常可用。
+**不影响终端模式**——`nvim` 照常可用。
 
 ### 为什么随包的是 Neovide **nightly** 而不是稳定版
 
@@ -205,8 +205,8 @@ Caused by: Invalid parameter
 
 ```sh
 # Linux / macOS（没有控制台窗口问题）
-./neovide.sh
-./neovide.sh docs/USAGE.md
+./neovide
+./neovide docs/USAGE.md
 ```
 
 > 若双击 `.vbs` 毫无反应，多半是该机器用组策略禁用了 WSH

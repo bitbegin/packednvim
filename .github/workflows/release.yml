@@ -259,12 +259,12 @@ jobs:
           if ($IsWindows) {
             $zip = Get-ChildItem dist/packednvim-$plat.zip
             Expand-Archive $zip.FullName smoke-test
-            & smoke-test/packednvim/nvim.cmd --headless -l tools/smoke.lua
+            & smoke-test/packednvim/runtime/bin/nvim.exe --headless -u smoke-test/packednvim/init.lua -l tools/smoke.lua
           } else {
             $tgz = Get-ChildItem dist/packednvim-$plat.tar.gz
             tar -xzf $tgz.FullName -C smoke-test
-            chmod +x smoke-test/packednvim/nvim.sh
-            & bash smoke-test/packednvim/nvim.sh --headless -l tools/smoke.lua
+            chmod +x smoke-test/packednvim/runtime/bin/nvim
+            & smoke-test/packednvim/runtime/bin/nvim --headless -u smoke-test/packednvim/init.lua -l tools/smoke.lua
           }
           if ($LASTEXITCODE -ne 0) { throw "冒烟测试失败（$plat）" }
 

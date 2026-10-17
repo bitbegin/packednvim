@@ -25,7 +25,7 @@
 ```
 nvim-distro/
 ├── init.lua                     入口，只做一件事：加载 distro
-├── nvim.cmd / nvim.sh           启动脚本：XDG 隔离 + bin 前置 PATH + -u init.lua
+├── nvim / nvim           启动脚本：XDG 隔离 + bin 前置 PATH + -u init.lua
 ├── lua/distro/
 │   ├── init.lua                 顺序编排：options → pack → plugins → search → lsp → format → keymaps
 │   ├── options.lua              全局选项（含 ambiwidth=single）
@@ -167,7 +167,7 @@ end
 | shell | `vim.o.shell` 指向 `pwsh`/`cmd`，`jobstart` 的引号规则与 POSIX 不同，需要分别测 | `sh` 行为一致 |
 | 终端与字体 | conhost 对 Nerd Font 与宽字符支持差，建议 Windows Terminal | 终端普遍更好，但东亚宽字符仍需 `ambiwidth=double` |
 | 输入法 | `im-select.exe` | `fcitx5-remote` 或 `ibus` |
-| 启动脚本 | `nvim.cmd` | `nvim.sh`（`chmod +x`） |
+| 启动脚本 | `nvim` | `nvim`（`chmod +x`） |
 
 两个平台的启动脚本做同样的事：设置 `NVIM_APPNAME` 与 `XDG_*`（Windows 上对应 `$env:LOCALAPPDATA` 等），把 `<distro>/bin` 前置进 `PATH`，然后用 `-u <distro>/init.lua` 指向发行版配置。这样发行版是**自包含且不污染用户已有 Neovim 配置**的。
 

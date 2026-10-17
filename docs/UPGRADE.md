@@ -112,7 +112,7 @@ pwsh tools/vendor.ps1 -Update [-Only <子串>]
 python tools/check-stack.py
 
 # 4. 本地冒烟（对已解压的包；16 项断言）
-#    <包目录>\nvim.cmd --headless -l tools\smoke.lua
+#    <包目录>\nvim --headless -l tools\smoke.lua
 
 # 5. 提交声明并推送
 git add vendor/lock.json tools/ docs/ README.md bin/im-select.exe

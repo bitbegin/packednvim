@@ -78,11 +78,11 @@ D:\packednvim\          （Windows 示例）
 
 ```
 init.lua          入口
-nvim.cmd          Windows 终端启动脚本
-nvim.sh           Linux/macOS 启动脚本
+nvim          Windows 终端启动脚本
+nvim           Linux/macOS 启动脚本
 bin\neovide.exe       Windows 双击启动 GUI（无控制台窗口）
 bin\neovide.exe       Windows GUI 启动（终端里用，能看报错）
-neovide.sh        Linux/macOS GUI 启动
+neovide        Linux/macOS GUI 启动
 %APPDATA%\neovide\config.toml      随包的 GUI 外观配置（字体等）
 bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select / neovide）
 lua/distro/       配置本体
@@ -99,7 +99,7 @@ VERSION           这个包是什么、怎么来的
 
 ```bat
 cd /d D:\packednvim
-nvim.cmd
+nvim
 ```
 
 **Windows（图形界面）**
@@ -108,33 +108,33 @@ nvim.cmd
 要看详细报错就用 `bin\neovide.exe`（会有控制台窗口，错误直接打在里面）。
 
 没有随包 Neovide 的平台（Linux arm64、macOS）请自行安装，再用同一批
-`neovide.sh` 启动——启动器会负责 XDG 隔离。
+`neovide` 启动——启动器会负责 XDG 隔离。
 
 **Linux / macOS**
 
 ```bash
 cd /opt/packednvim
-chmod +x nvim.sh        # 从 Windows 解压过来的话需要补可执行位
-./nvim.sh
+chmod +x nvim        # 从 Windows 解压过来的话需要补可执行位
+./nvim
 ```
 
 打开文件、传参数都可以，脚本会把参数原样转给 Neovim：
 
 ```bat
-nvim.cmd D:\code\main.py
-nvim.cmd +"lua vim.cmd('checkhealth distro')"
+nvim D:\code\main.py
+nvim +"lua vim.cmd('checkhealth distro')"
 ```
 
 **如果 Neovim 不在 PATH 上**，用 `NVIM_EXE` 指定：
 
 ```bat
 set NVIM_EXE=D:\tools\nvim-win64\bin\nvim.exe
-nvim.cmd
+nvim
 ```
 
 ```bash
 export NVIM_EXE=/opt/nvim/bin/nvim
-./nvim.sh
+./nvim
 ```
 
 ### 4. 验证安装
@@ -198,7 +198,7 @@ uninstall.cmd
 代价只有一个：注册表只能传**参数**、传不了**环境变量**，所以 XDG / TMPDIR
 那套隔离不生效，运行期状态（undo、shada、byte-code 缓存）落到系统默认位置
 （`%LOCALAPPDATA%\nvim-data`）。配置本身仍正确，因为 `-u` 明确指向本发行版
-的 `init.lua`。要完整隔离就用默认模式（经 `nvim.cmd`）。
+的 `init.lua`。要完整隔离就用默认模式（经 `nvim`）。
 **不想手工敲命令**：直接双击包根目录的 `install.cmd`——它会一次完成 junction、PATH、环境变量、文件关联、右键项与状态记录（约 7 秒）。撤销用 `uninstall.cmd`。
 
 **关于「双击 .md 仍然问一次用哪个程序」**：这是 Windows 的设计，不是脚本没写好。
@@ -218,13 +218,13 @@ uninstall.cmd
 | 文件 | 用途 | 为什么不能省 |
 | --- | --- | --- |
 | `bin\neovide.exe`（直接双击/关联） | GUI（Neovide） | 配置经 junction 发现、状态经用户级 XDG 变量定位，所以不需要任何包装脚本 |
-| `nvim.cmd` / `nvim.sh` | 终端 Neovim | 唯一设置 4 个 XDG 变量 + `TMPDIR` + `PATH` 前置并传 `-u init.lua` 的地方；去掉就会读系统配置 |
+| `nvim` | 终端 Neovim | 唯一设置 4 个 XDG 变量 + `TMPDIR` + `PATH` 前置并传 `-u init.lua` 的地方；去掉就会读系统配置 |
 | `install.cmd` / `install.sh` / `install.ps1` | 安装 / 卸载 | 见上一节 |
 
 `bin/neovide.exe` 约 34 MB，是这些启动器存在的前提。如果只需要终端 Neovim，
 可以删掉 `bin/neovide.exe` 与四个 `neovide.*` 文件，并同步移除
 `tools/package.ps1` 的 `INCLUDE` 条目和 `tools/fetch-tools.ps1` 的 neovide 规格。
-**当前的选择是两者都带**：终端入口 `nvim.cmd`，GUI 入口 `bin\neovide.exe` 双击即用。
+**当前的选择是两者都带**：终端入口 `nvim`，GUI 入口 `bin\neovide.exe` 双击即用。
 
 
 ---
@@ -252,7 +252,7 @@ commit，让 `tools/vendor.ps1` 能在打包时拉到确定的版本。
 runtimepath。** 于是你机器上原有的 Neovim 配置与插件会一起加载 ——
 键位冲突、插件重复、启动报错，而且极难定位（报错来自别人的配置）。
 
-所以 `nvim.cmd` / `nvim.sh` 把四个变量全部指向发行版目录内的 `.local/`：
+所以 `nvim` 把四个变量全部指向发行版目录内的 `.local/`：
 
 ```
 XDG_CONFIG_HOME = <distro>/.local/config
@@ -340,7 +340,7 @@ Vim 文档明确说明这是两个独立选项。而分工不同：
 
 ### 原理 7：Windows 上 `.cmd` 脚本只能是 ASCII + CRLF
 
-`nvim.cmd` 故意不含任何非 ASCII 字符，注释也用英文。原因不是偏好：
+`nvim` 故意不含任何非 ASCII 字符，注释也用英文。原因不是偏好：
 
 **`cmd.exe` 按系统 OEM 代码页解析 `.cmd` 文件字节，不认 UTF-8。**
 （中文 Windows 上是 GBK。）中文注释会被解码错乱，其中一段甚至会被当成命令
@@ -525,7 +525,7 @@ grep -rn 'fillchars\|listchars\|statuscolumn' pack/distro/start/ | grep -P '[^\x
 没装 Nerd Font，或终端没用它。这是强依赖，不是可选项。
 
 **`:checkhealth distro` 说找不到 rg / fzf**
-1) 确认是通过 `nvim.cmd` / `nvim.sh` 启动的（它们负责前置 PATH）；
+1) 确认是通过 `nvim` 启动的（它们负责前置 PATH）；
 2) Linux 上从 Windows 解压的话，补可执行位：
 `chmod +x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck`。
 
@@ -549,5 +549,5 @@ blink 的逻辑是「没有 version 文件、但共享库能加载」就直接�
 所以请看 `:messages` 或 `:checkhealth distro`，不要因为「能用」就跳过。
 
 **想用自己已有的 Neovim 配置**
-本发行版默认完全隔离。若想共存，就别用 `nvim.cmd`，改为手动启动并只前置
+本发行版默认完全隔离。若想共存，就别用 `nvim`，改为手动启动并只前置
 `runtimepath`/`packpath`（见原理 3），但要注意原理 2 说的污染问题。
