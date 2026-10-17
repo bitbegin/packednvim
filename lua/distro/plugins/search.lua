@@ -106,14 +106,20 @@ return {
         },
         -- 大文件预览用 head 限制行数，避免预览几 MB 的文件把界面卡住
         previewers = { builtin = { syntax_limit_b = 1024 * 100 } },
+
+        -- 条目里「文件名 / 内容」之间的分隔符，默认是 `▏`（U+258F，歧义宽度）。
+        -- 在 ambiwidth=double 下它占 2 格、列对不齐 —— 与上面的 --no-unicode
+        -- 是同一类问题。区别在于这个字符是 **fzf-lua 自己插进条目文本**的，
+        -- fzf 的 --no-unicode 管不到它，所以要单独覆盖。
+        grep = { separator = '|' },
+        quickfix = { separator = '|' },
+        loclist = { separator = '|' },
       })
 
-      -- grep 走随包的 rg，且**复用 search.lua 里那套参数**的思路：
-      -- 忽略 .git、隐藏文件也搜、限制列宽防止超长行拖慢渲染。
-      local ok, search = pcall(require, 'distro.search')
-      if ok and type(search.rg_command) == 'function' then
-        fzf.config().grep.rg_opts = nil -- 由下面的命令统管
-      end
+      -- 这里原先有一段 `fzf.config().grep.rg_opts = nil`，注释写着「由下面的命令统管」，
+      -- 但后面并没有那样的命令 —— 是早先想法留下的死代码。
+      -- 它还有风险：那是在 setup 之后直接改 fzf-lua 的内部表。
+      -- 已删除：不做的事就不要留下会执行的痕迹。
 
       -- 键位：全部 <leader>f*
       local map = function(keys, fn, desc)
