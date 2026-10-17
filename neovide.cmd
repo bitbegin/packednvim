@@ -108,5 +108,10 @@ for %%D in (config data state cache tmp) do (
 
 rem --neovim-bin goes BEFORE the separator; everything after it is handed to
 rem nvim verbatim. The trailing %* lets you pass files: neovide.cmd note.md
-"%NEORUN%" --neovim-bin "%NVIMBIN%" -- -u "%DISTRO%\init.lua" %*
+rem
+rem --cmd sets g:neovide BEFORE init.lua runs. Neovide itself only sets that
+rem variable over RPC after startup, so a plain if vim.g.neovide check inside
+rem the config would never fire (verified: Neovide logged Key not found for
+rem every g:neovide_* setting the config was supposed to provide).
+"%NEORUN%" --neovim-bin "%NVIMBIN%" -- -u "%DISTRO%\init.lua" --cmd "let g:neovide=v:true" %*
 exit /b %ERRORLEVEL%

@@ -87,4 +87,9 @@ mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" \
 
 # --neovim-bin BEFORE "--"; everything after "--" goes to nvim verbatim.
 # The "$@" lets you pass files: ./neovide.sh note.md
-exec "$NEORUN" --neovim-bin "$NVIMBIN" -- -u "$DISTRO/init.lua" "$@"
+#
+# --cmd sets g:neovide BEFORE init.lua runs. Neovide itself only sets that
+# variable over RPC after startup, so a plain `if vim.g.neovide` inside the
+# config would never fire.
+exec "$NEORUN" --neovim-bin "$NVIMBIN" -- -u "$DISTRO/init.lua" \
+  --cmd 'let g:neovide=v:true' "$@"

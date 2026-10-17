@@ -9,13 +9,22 @@
 # 否则同一套设置的真相会被劈成两半，排查时非常难受。
 
 [font]
-# 主字体：等宽 + Nerd Font 图标。
-normal = ["JetBrainsMono NFM", "JetBrainsMono Nerd Font"]
+# 字号。
 size = 13.0
 
-# 中文回退。可选值按你机器上实际装了的来：
-#   Microsoft YaHei Mono / Microsoft YaHei / Sarasa Mono SC / Noto Sans Mono CJK SC
-# 不配这一项，中文会显示成方块 —— Neovide 内置的字体不含 CJK 字形。
+# 字体族用**数组表**形式逐个列出，第一个是主字体，后面的是回退。
+#
+# 踩过的坑：不能同时写 `normal = ["..."]` 和 `[[font.normal]]` —— TOML 会报
+# `duplicate key`，Neovide 直接整份配置作废、退回默认（中文就成方块）。
+# 二者只能选一种写法；需要回退字体就必须全部用 `[[font.normal]]`。
+[[font.normal]]
+family = "JetBrainsMono NFM"
+
+# 中文回退。按你机器上实际装了的排优先级即可，Neovide 会用第一个存在的。
+# 不配这一段，中文会显示成方块 —— Neovide 内置字体不含 CJK 字形。
+[[font.normal]]
+family = "JetBrainsMono Nerd Font"
+
 [[font.normal]]
 family = "Sarasa Mono SC"
 
@@ -23,6 +32,6 @@ family = "Sarasa Mono SC"
 family = "Microsoft YaHei"
 
 [box-drawing]
-# 用字体自带字形画框线。Nerd Font / Sarasa 都自带，
-# 视觉上与终端一致；若发现框线错位可改成 "native"。
+# 用字体自带字形画框线。Nerd Font / Sarasa 都自带，视觉上与终端一致；
+# 若发现框线错位可改成 "native"。
 mode = "font-glyph"
