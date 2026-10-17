@@ -150,7 +150,13 @@ if (-not (Test-Path -LiteralPath $NvimCmd)) {
     exit 1
 }
 
-$exts = @($Ext | ForEach-Object { $_.TrimStart('.') } | Where-Object { $_ })
+# -File 调用时 "-Ext md,txt" 会作为**一个**字符串传进来，必须再按逗号切开；
+# 否则会建出 "packednvim.md,txt" 这种不存在的扩展名（实测踩到）。
+$exts = @(
+    $Ext | ForEach-Object { $_ -split ',' } |
+    ForEach-Object { $_.Trim().TrimStart('.') } |
+    Where-Object { $_ }
+)
 if ($exts.Count -eq 0) { $exts = @('md', 'markdown') }
 
 Write-Host "=== packednvim installer ==="
