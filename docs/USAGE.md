@@ -138,6 +138,11 @@ Lua 的 `luacheck` 没有官方预编译产物，需自行安装或构建——�
 
 终端之外，本发行版也可以用 [Neovide](https://neovide.dev/) 以图形界面运行。
 **Neovim 本体不变**——Neovide 只是个前端，插件、LSP、键位全都不受影响。
+**外观配置随包分发**：`bin/neovide.toml` 里有初始窗口尺寸与字体回退链
+（`FiraCode Nerd Font Mono` → `JetBrainsMono Nerd Font` → `Sarasa Mono SC`，
+最后一项是中文字形兜底）。Neovide 自己不会去读 `bin/`，所以 `install.cmd`
+会设用户级环境变量 `NEOVIDE_CONFIG` 指向它；`uninstall.cmd` 负责还原。
+手动运行（没跑安装脚本）时，可以用 `--config` 或自行设这个变量。
 
 ### 前置
 

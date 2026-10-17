@@ -255,18 +255,6 @@ if (Test-Path -LiteralPath $NeovideToml) {
 Say ('XDG_STATE_HOME -> ' + $StateHome)
 Say ('XDG_CACHE_HOME -> ' + $CacheHome)
 
-# GUI 外观（初始窗口尺寸、字体与中文回退）随包放在 bin\neovide.toml。
-#
-# 光把文件放进去是不生效的：Neovide 只读 %APPDATA%\neovide\config.toml，
-# 或者 NEOVIDE_CONFIG 指向的路径 —— bin\ 在 PATH 上只解决「能不能找到
-# neovide.exe」，与配置位置无关。所以这里必须显式指过去。
-$NeovideToml = $Pkg + '\bin\neovide.toml'
-$prevNeoConf = [Environment]::GetEnvironmentVariable('NEOVIDE_CONFIG', 'User')
-if (Test-Path -LiteralPath $NeovideToml) {
-    SetUserEnvFast 'NEOVIDE_CONFIG' $NeovideToml
-    Say ('NEOVIDE_CONFIG -> ' + $NeovideToml)
-} else {
-    Write-Host '  (bin\neovide.toml 缺失，跳过 NEOVIDE_CONFIG；GUI 将用 Neovide 默认外观)'
 }
 
 Write-Host '=== 4. file associations ==='
