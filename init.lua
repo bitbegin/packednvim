@@ -46,6 +46,29 @@ vim.g.distro_root = root
 vim.opt.runtimepath:prepend(root)
 vim.opt.packpath:prepend(root)
 
+-- 去重：同一个目录在 runtimepath 里出现两次，会让 Vimscript 插件被 source
+-- 两次（症状是启动时报 E122 function ... already exists，例如 jieba.vim）。
+-- 经 junction（%LOCALAPPDATA%\nvim）启动、又同时用 -u 指向真实路径时就会这样；
+-- Neovim 自己也会把 pack/*/start 加进 runtimepath，叠加后更容易重复。
+-- 比较时先 resolve 成真实路径（junction 与真实路径视为同一个），再大小写归一。
+local function dedupe_paths(list)
+    local seen, out = {}, {}
+    for _, entry in ipairs(list) do
+        if entry and entry ~= '' then
+            local resolved = vim.fn.resolve(entry)
+            if resolved == '' then resolved = entry end
+            local key = resolved:gsub('\\', '/'):lower():gsub('/+$', '')
+            if not seen[key] then
+                seen[key] = true
+                out[#out + 1] = entry
+            end
+        end
+    end
+    return out
+end
+vim.opt.runtimepath = dedupe_paths(vim.opt.runtimepath:get())
+vim.opt.packpath = dedupe_paths(vim.opt.packpath:get())
+
 -- 随包的 tree-sitter 解析器与查询要挂上 runtimepath。
 --
 -- **不挂上去的话，包里的解析器就是纯死重量** —— Neovim 与 nvim-treesitter 都只在

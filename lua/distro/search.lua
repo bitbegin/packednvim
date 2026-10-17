@@ -336,7 +336,7 @@ function M._setup_keymaps()
   -- resume 是 fzf-lua 的内建动作；若无历史记录它自己会提示，无需兜底。
   map('n', '<leader>ss', function()
     require('fzf-lua').resume()
-  end, { desc = '搜索：恢复上一次搜索界面（fzf resume）' })
+  end, { desc = '搜索：恢复上次搜索（需先搜索过一次）' })
 end
 
 function M.setup(opts)
