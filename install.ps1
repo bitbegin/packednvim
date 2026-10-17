@@ -77,6 +77,20 @@ function RemoveReg([string]$sub) {
     Remove-Item -LiteralPath ('HKCU:\' + $sub) -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# 直接写 HKCU\Environment，不走 [Environment]::SetEnvironmentVariable：
+# 后者会向所有顶层窗口广播 WM_SETTINGCHANGE 并逐个等待响应，窗口一多
+# 就要 5 秒以上（实测）。这里只写注册表，新开的进程/重启 Explorer 后生效。
+function SetUserEnvFast([string]$name, [string]$value) {
+    $k = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+    if (-not $k) { $k = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment') }
+    if ($value) {
+        $k.SetValue($name, $value, [Microsoft.Win32.RegistryValueKind]::String)
+    } else {
+        try { $k.DeleteValue($name, $false) } catch { }
+    }
+    $k.Close()
+}
+
 function GetUserPath { [Environment]::GetEnvironmentVariable('Path', 'User') }
 function SetUserPath([string]$v) { [Environment]::SetEnvironmentVariable('Path', $v, 'User') }
 
@@ -107,8 +121,7 @@ if ($Uninstall) {
         $name = $pair[0]
         $cur  = [Environment]::GetEnvironmentVariable($name, 'User')
         if ($cur -eq $pair[1]) {
-            if ($pair[2]) { [Environment]::SetEnvironmentVariable($name, $pair[2], 'User') }
-            else { [Environment]::SetEnvironmentVariable($name, $null, 'User') }
+            if ($pair[2]) { SetUserEnvFast $name $pair[2] } else { SetUserEnvFast $name $null }
             Say ('restored ' + $name)
         }
     }
@@ -191,8 +204,8 @@ foreach ($d in @($StateHome, $CacheHome, $LogDir)) {
 }
 $prevState = [Environment]::GetEnvironmentVariable('XDG_STATE_HOME', 'User')
 $prevCache = [Environment]::GetEnvironmentVariable('XDG_CACHE_HOME', 'User')
-[Environment]::SetEnvironmentVariable('XDG_STATE_HOME', $StateHome, 'User')
-[Environment]::SetEnvironmentVariable('XDG_CACHE_HOME', $CacheHome, 'User')
+SetUserEnvFast 'XDG_STATE_HOME' $StateHome
+SetUserEnvFast 'XDG_CACHE_HOME' $CacheHome
 Say ('XDG_STATE_HOME -> ' + $StateHome)
 Say ('XDG_CACHE_HOME -> ' + $CacheHome)
 
