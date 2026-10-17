@@ -147,9 +147,14 @@ if ($Uninstall) {
 
     Write-Host '=== config link ==='
     if ($st.link) {
-        if (IsReparsePoint ([string]$st.link)) {
-            Remove-Item -LiteralPath ([string]$st.link) -Force -ErrorAction SilentlyContinue
-            Say ('removed link ' + $st.link)
+        $lp = [string]$st.link
+        if (IsReparsePoint $lp) {
+            # 必须用 rmdir：Remove-Item 对「有子项的重解析点」要么提示确认
+            # （无 -Recurse），要么在 5.1 下 -Recurse 跟进目标把包内容删掉。
+            # rmdir 只移除链接本身，目标目录原样保留。
+            & cmd /c rmdir /q "$lp" 2>&1 | Out-Null
+            if (Test-Path -LiteralPath $lp) { Write-Warning ('could not remove link ' + $lp) }
+            else { Say ('removed link ' + $lp) }
         }
     }
 
