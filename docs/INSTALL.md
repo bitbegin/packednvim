@@ -198,7 +198,7 @@ uninstall.cmd
 代价只有一个：注册表只能传**参数**、传不了**环境变量**，所以 XDG / TMPDIR
 那套隔离不生效，运行期状态（undo、shada、byte-code 缓存）落到系统默认位置
 （`%LOCALAPPDATA%\nvim-data`）。配置本身仍正确，因为 `-u` 明确指向本发行版
-的 `init.lua`。要完整隔离就用默认模式（经 `nvim`）。
+的 `init.lua`。要完整隔离就在 PATH 前置 `<包>\bin` 与 `<包>\runtime\bin`（安装脚本已经做了）。
 **不想手工敲命令**：直接双击包根目录的 `install.cmd`——它会一次完成 junction、PATH、环境变量、文件关联、右键项与状态记录（约 7 秒）。撤销用 `uninstall.cmd`。
 
 **关于「双击 .md 仍然问一次用哪个程序」**：这是 Windows 的设计，不是脚本没写好。
@@ -211,24 +211,23 @@ uninstall.cmd
 以双击行为为准。另外，若系统里有第三方工具在「备份/恢复」文件关联，卸载后
 可能残留一个默认值；`install.ps1` 会在删不掉时打印 `WARNING` 而不是假装成功。
 
-### 7. 启动器一览
+### 7. 入口一览（没有启动脚本）
 
-包根目录的几个入口各自用途不同，**都不是冗余文件**：
+早期版本有 `nvim.cmd` / `nvim.sh` / `neovide.vbs` 等包装脚本，用来设置 XDG
+环境变量并定位二进制。现在这些都被拆掉了，改成三条更简单的东西：
 
-| 文件 | 用途 | 为什么不能省 |
+| 你要的 | 怎么做 | 为什么不再需要脚本 |
 | --- | --- | --- |
-| `bin\neovide.exe`（直接双击/关联） | GUI（Neovide） | 配置经 junction 发现、状态经用户级 XDG 变量定位，所以不需要任何包装脚本 |
-| `nvim` | 终端 Neovim | 唯一设置 4 个 XDG 变量 + `TMPDIR` + `PATH` 前置并传 `-u init.lua` 的地方；去掉就会读系统配置 |
-| `install.cmd` / `install.sh` / `install.ps1` | 安装 / 卸载 | 见上一节 |
+| 终端里用 | 直接敲 `nvim` | 安装脚本把 `<包>\runtime\bin` 前置进用户 PATH，`nvim.exe` 留在原位就能找到自己的 `runtime\share\nvim\runtime` |
+| 双击 `.md` / `.txt` | 文件关联 → `bin\neovide.exe "%1"` | Neovide 是 GUI 程序，本来就没有控制台窗口 |
+| 让发行版成为配置来源 | 安装脚本建 `%LOCALAPPDATA%\nvim` → 包的 junction | Neovim 从标准配置目录读 init.lua，junction 让它指到包里 |
+| 状态/缓存不污染主目录 | 用户级 `XDG_STATE_HOME` / `XDG_CACHE_HOME` | 指向 `%LOCALAPPDATA%\nvim\.local\` 下 |
 
-`bin/neovide.exe` 约 34 MB，是这些启动器存在的前提。如果只需要终端 Neovim，
-可以删掉 `bin/neovide.exe` 与四个 `neovide.*` 文件，并同步移除
-`tools/package.ps1` 的 `INCLUDE` 条目和 `tools/fetch-tools.ps1` 的 neovide 规格。
-**当前的选择是两者都带**：终端入口 `nvim`，GUI 入口 `bin\neovide.exe` 双击即用。
+**为什么不设 `XDG_CONFIG_HOME`**：配置的发现依赖标准目录（junction 就挂在那里）。
+把它改成包内的空目录，Neovim 会找不到 `init.lua`，发行版等于不加载。
 
-
----
-
+安装做四件事：junction、PATH（两个目录）、两个环境变量、文件关联 + 右键项，
+全部记录在 `.local/install-state.json`；`uninstall.cmd` 按它精确回滚。
 ## 二、安装原理
 
 ### 原理 1：不用插件管理器，因为它的核心职责在离线场景下消失了
@@ -340,7 +339,7 @@ Vim 文档明确说明这是两个独立选项。而分工不同：
 
 ### 原理 7：Windows 上 `.cmd` 脚本只能是 ASCII + CRLF
 
-`nvim` 故意不含任何非 ASCII 字符，注释也用英文。原因不是偏好：
+`install.cmd` / `uninstall.cmd` 故意不含任何非 ASCII 字符，注释也用英文。原因不是偏好：
 
 **`cmd.exe` 按系统 OEM 代码页解析 `.cmd` 文件字节，不认 UTF-8。**
 （中文 Windows 上是 GBK。）中文注释会被解码错乱，其中一段甚至会被当成命令
@@ -549,5 +548,5 @@ blink 的逻辑是「没有 version 文件、但共享库能加载」就直接�
 所以请看 `:messages` 或 `:checkhealth distro`，不要因为「能用」就跳过。
 
 **想用自己已有的 Neovim 配置**
-本发行版默认完全隔离。若想共存，就别用 `nvim`，改为手动启动并只前置
+本发行版默认完全隔离。若想共存，就手工启动并只前置
 `runtimepath`/`packpath`（见原理 3），但要注意原理 2 说的污染问题。

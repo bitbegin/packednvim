@@ -184,92 +184,88 @@ Caused by: Invalid parameter
 
 ### 启动
 
-用**随包的启动器**，不要直接开 `neovide.exe`。
+**Windows：直接开 `bin\neovide.exe`，或双击任意已关联的 `.md` 文件。**
 
-**Windows 双击启动用 `bin\neovide.exe`，不要双击 `bin\neovide.exe`。**
-
-| 场景 | 用哪个 | 原因 |
-| --- | --- | --- |
-| 双击 / 快捷方式 | `bin\neovide.exe` | 批处理必然分配控制台窗口，双击后会一直留着那个黑窗口。`.vbs` 用 `WScript.Shell.Run` 以 `SW_HIDE` 启动，**完全没有窗口** |
-| 终端里、要看报错 | `bin\neovide.exe` | 错误直接打在终端里，便于排查 |
-| 拖文件到图标上 | `bin\neovide.exe` | 会把参数转发给 `bin\neovide.exe` |
-
-启动失败时 `.vbs` 会弹框提示退出码（因为此时没有控制台可看），并让你改用
-`bin\neovide.exe` 看详细错误。
+`neovide.exe` 是图形程序，**本身不分配控制台窗口** —— 因此不需要任何
+`.cmd` / `.vbs` 包装脚本来隐藏窗口（那几个脚本已删除）。
+先跑一次 `install.cmd`，它会把 `<包>\bin` 加进 PATH 并把 `.md` 等扩展名
+关联到 Neovide；之后终端里直接敲 `neovide` 也可以。
 
 ```powershell
-# Windows：双击 bin\neovide.exe，或命令行
-.\bin\neovide.exe
-.\bin\neovide.exe docs\USAGE.md     # 要看到输出时用这个
+neovide                          # 走 PATH（install.cmd 已加）
+.\bin\neovide.exe                # 或直接指到包里
+.\bin\neovide.exe docs\USAGE.md
 ```
 
 ```sh
-# Linux / macOS（没有控制台窗口问题）
-./neovide
-./neovide docs/USAGE.md
+# Linux / macOS：上游没有随包产物，自行安装后用同名命令
+neovide docs/USAGE.md
 ```
 
-> 若双击 `.vbs` 毫无反应，多半是该机器用组策略禁用了 WSH
-> （`wscript.exe`）。此时改用 `bin\neovide.exe`，代价是会有一个控制台窗口。
+### 配置怎么被发现（没有启动器之后）
 
-### 为什么必须用启动器
+旧方案靠启动器设环境变量；现在改成 `install.ps1` 写**用户级环境变量**，
+所以不包装脚本也能做到隔离：
 
-Neovide 自己负责拉起 `nvim` 进程，**不会读你仓库里的 `init.lua`**。启动器做三件事：
+| 事项 | 由谁负责 |
+| --- | --- |
+| 找得到 `nvim` / `neovide` | 用户 PATH 加入 `<包>\bin` 与 `<包>\runtime\bin` |
+| 配置发现（`init.lua`） | `%LOCALAPPDATA%\nvim` → 指向包的 junction |
+| 状态与会话 | 用户级 `XDG_STATE_HOME` / `XDG_CACHE_HOME` 指向包内 `.local\` |
+| **GUI 外观** | 用户级 `NEOVIDE_CONFIG` → `<包>\bin\neovide.toml` |
 
-1. **指向本包的 Neovim 与 init.lua。** 等价于：
-   ```
-   neovide --neovim-bin <包内 nvim> -- -u <包内 init.lua>
-   ```
-   注意 `--neovim-bin` 必须写在 `--` **之前**：写在后面会被当成 nvim 的参数而报未知选项。
-   `--` 之后的参数（`-u`、文件名）由 Neovide **原样**交给 nvim。
-
-2. **隔离 XDG 四个目录**，让配置与数据都落在包内的 `.local/` 下。
-   这一点**不能靠 init.lua 做**：Neovim 在加载 init.lua 之前就已经解析完
-   `stdpath()` 了，那时再改环境变量为时已晚。所以必须由启动器在**启动 Neovide 之前**
-   设好——Neovide 拉起的子进程会继承这套环境。
-
-3. **把随包的 `bin/` 前置到 PATH**，保证用的是随包的 `rg` / `fzf` / `stylua`；
-   同时设 `TMPDIR`（本 Windows nightly 缺了它，`tempname()` 会返回空串，进而弄坏 fzf-lua）。
+> ⚠️ 所以**必须跑过 `install.cmd`**。不跑的话以上变量都不存在，只能手工
+> `bin\neovide.exe`，那时它会去找你 `%APPDATA%\nvim` 下的配置，而不是包里这份。
 
 ### 外观配置
 
-GUI 外观放在随包的 [`%APPDATA%\neovide\config.toml`](../%APPDATA%\neovide\config.toml) 里（字体、字号、框线），
-启动器会把它设成 `NEOVIDE_CONFIG` 指过去，因此**设置跟着包走**，
-不会写进你的 `%APPDATA%\neovide\config.toml`。
+GUI 外观在随包的 [`bin/neovide.toml`](../bin/neovide.toml)：初始窗口尺寸
+（`maximized`）、字体与中文回退链、框线风格。
 
-> ⚠️ 默认字体不含中文字形。`%APPDATA%\neovide\config.toml` 里已配了 Sarasa Mono SC 与
-> Microsoft YaHei 作为回退，**如果你的机器上这两个都没有**，中文会显示成方块。
-> 改成你实际装了的等宽中文字体即可。
->
-> ⚠️ 加字体回退时**只能**用 `[[font.normal]]` 数组表逐条写，不能同时出现
+**只把文件放进 `bin/` 不会生效。** Neovide 只读 `%APPDATA%\neovide\config.toml`
+或 `NEOVIDE_CONFIG` 指向的路径；`bin/` 在 PATH 上只解决「能不能找到 `neovide.exe`」。
+`install.ps1` 会写 `NEOVIDE_CONFIG=<包>\bin\neovide.toml`，所以设置跟着包走，
+不会写进你自己的 `%APPDATA%\neovide\config.toml`。
+
+两个字体相关的坑（都踩过）：
+
+> ⚠️ 默认字体不含中文字形。`bin/neovide.toml` 已配回退链
+> （Sarasa Mono SC → 新宋体 → Microsoft YaHei UI）。**如果这些你机器上都没有**，
+> 中文会显示成方块或字间出现空隙。换成你实际装了的等宽中文字体即可。
+> 查证方法：`neovide --log`，看 `Some configured fonts could not be loaded`
+> 那一行列了哪些族名 —— 列了本机没有的字体时，Neovide 只会静默退回内置字体。
+
+> ⚠️ 加回退**只能**用 `[[font.normal]]` 数组表逐条写，不能同时出现
 > `normal = ["..."]` —— 那是 TOML 的 `duplicate key`，Neovide 会**整份配置作废**
-> 并静默退回默认（表现就是中文成方块、字号也不对）。命令行启动时能看到
-> `TOML parse error ... duplicate key`，但双击启动时看不到，很容易误判成字体没装。
+> 并静默退回默认（表现就是中文成方块、字号也不对）。
 
-编辑器侧的行为（光标动画、缩放等）在 `lua/distro/options.lua` 的 GUI 一节，
-只在 `vim.g.neovide` 为真时生效，终端模式下不受影响。
+> ⚠️ `size` 的单位是**物理像素**：在 150% 缩放的屏上写 `size = "1400x900"`
+> 实际只得到 933×600，看着仍然很小。所以默认用 `maximized = true`；
+> 要固定尺寸请按「期望逻辑尺寸 × 缩放比例」换算，或用 `grid`（按字格算）。
 
-> 注意时序：Neovide 自己是在 nvim 启动**之后**通过 RPC 才设 `g:neovide` 的，
-> 那样 `init.lua` 里已经来不及判断。所以启动器额外传了
-> `--cmd 'let g:neovide=v:true'`，让该变量在 init 之前就存在。
-> 但 Neovide 读取 `g:neovide_*` 的时机更早，日志里仍会出现几条
-> `Key not found` —— 那是无害的，我们设的值与 Neovide 默认值基本一致。
+编辑器侧的行为（光标动画、缩放等）**不再写在 `lua/distro/options.lua` 里**：
+那里的 `if vim.g.neovide` 分支在 init 阶段永远为假（Neovide 是连接后才经 RPC
+设这个变量），留着只会变成静默死代码。需要在 GUI 里生效的运行时设置应挂
+`UIEnter` 自动命令。
 
 ### 排错
 
-| 现象 | 原因 |
+| 现象 | 原因 / 处理 |
 | --- | --- |
-| `Cannot find Neovide` | 没装或不在 PATH；设 `NEOVIDE_EXE` |
-| 中文全是方块 | `%APPDATA%\neovide\config.toml` 里的回退字体本机没有 |
-| 启动后是「裸 Neovim」 | 绕过了启动器直接开 `neovide.exe`，没带 `-u` |
-| 图标 / 字体不对 | 终端里正常、GUI 里不对 → 改 `%APPDATA%\neovide\config.toml` 的 `[font]` |
+| 终端里 `neovide` 找不到 | 没跑 `install.cmd`，或 PATH 未刷新（重开终端） |
+| 中文全是方块 / 字间有空隙 | `bin/neovide.toml` 的回退字体本机没有；用 `neovide --log` 查 |
+| 窗口很小、不像最大化 | `NEOVIDE_CONFIG` 没生效（没跑安装脚本，或 toml 缺失） |
+| 启动后是「裸 Neovim」 | `%LOCALAPPDATA%\nvim` junction 不存在或不指向本包 |
+| 双击 `.md` 没反应 | 文件关联没注册；重跑 `install.cmd` |
 
 ---
 
 ## 会话
 
 `mini.sessions` 已启用，会话文件放在发行版自己的 `stdpath('state')/sessions` 下，
-**不会污染**你机器上其它 Neovim 配置的会话。---
+**不会污染**你机器上其它 Neovim 配置的会话。
+
+---
 
 ## 关于「没看到某个功能」
 
