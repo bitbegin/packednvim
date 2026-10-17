@@ -55,13 +55,22 @@ function GetRegDefault([string]$sub) {
     return $v
 }
 
+# 用 .NET 写入而不是 reg.exe：
+#   PowerShell 传**空字符串参数**时会被丢弃，于是 `reg add ... /d '' /f`
+#   变成 `/d` 吃掉 `/f`，reg.exe 转而询问「要覆盖吗？(Yes/No)」并等 stdin
+#   —— 安装脚本就此永久卡住（实测用 Set-PSDebug 定位到这一步）。
+#   SetValue 对空字符串是安全的。
 function RegSetDefault([string]$sub, [string]$value) {
-    & reg add ('HKCU\' + $sub) /ve /d $value /f | Out-Null
+    $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($sub)
+    $key.SetValue('', $value, [Microsoft.Win32.RegistryValueKind]::String)
+    $key.Close()
     if ((GetRegDefault $sub) -ne $value) { Write-Warning ('registry write failed: ' + $sub) }
 }
 
 function RegSetString([string]$sub, [string]$name, [string]$value) {
-    & reg add ('HKCU\' + $sub) /v $name /d $value /f | Out-Null
+    $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($sub)
+    $key.SetValue($name, $value, [Microsoft.Win32.RegistryValueKind]::String)
+    $key.Close()
 }
 
 function RemoveReg([string]$sub) {
@@ -111,7 +120,8 @@ if ($Uninstall) {
     foreach ($e in @($st.exts)) {
         $extKey = 'Software\Classes\.' + $e
         if ((GetRegDefault $extKey) -like 'packednvim*') {
-            & reg delete ('HKCU\' + $extKey) /ve /f 2>&1 | Out-Null
+            $k2 = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($extKey, $true)
+            if ($k2) { try { $k2.DeleteValue('', $false) } catch { }; $k2.Close() }
             Say ('cleared default for .' + $e)
         }
         Remove-ItemProperty -LiteralPath ('HKCU:\' + $extKey + '\OpenWithProgids') -Name ('packednvim.' + $e) -Force -ErrorAction SilentlyContinue
@@ -123,9 +133,11 @@ if ($Uninstall) {
     Say 'removed application registrations'
 
     Write-Host '=== config link ==='
-    if ($st.link -and (IsReparsePoint $st.link)) {
-        Remove-Item -LiteralPath $st.link -Force -ErrorAction SilentlyContinue
-        Say ('removed link ' + $st.link)
+    if ($st.link) {
+        if (IsReparsePoint ([string]$st.link)) {
+            Remove-Item -LiteralPath ([string]$st.link) -Force -ErrorAction SilentlyContinue
+            Say ('removed link ' + $st.link)
+        }
     }
 
     Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
@@ -144,20 +156,9 @@ Say ('package : ' + $Pkg)
 Say ('handler : ' + $Handler)
 Write-Host ''
 
-Write-Host '=== 0. network mark (Mark of the Web) ==='
-# 只处理真正带 Zone.Identifier 的文件，并只扫可执行/脚本类 —— 对整个包
-# 13000+ 文件逐个 Unblock-File 会跑好几分钟（踩过：装一次卡七分钟）。
-$patterns = @('*.exe', '*.dll', '*.cmd', '*.bat', '*.ps1', '*.sh', '*.vbs', '*.toml', '*.lua')
-$n = 0
-foreach ($pat in $patterns) {
-    foreach ($f in (Get-ChildItem -LiteralPath $Pkg -Recurse -File -Filter $pat -ErrorAction SilentlyContinue)) {
-        try {
-            $streams = Get-Item -LiteralPath $f.FullName -Stream Zone.Identifier -ErrorAction Stop
-            if ($streams) { Unblock-File -LiteralPath $f.FullName; $n = $n + 1 }
-        } catch { }
-    }
-}
-Say ('unblocked ' + $n + ' files')
+# 注：这里不再做「解除锁定（Mark of the Web）」。
+# 需求已明确不需要；对整包 13000+ 文件逐个 Unblock-File 会卡数分钟
+# （实测过），而 pack/vendor 里的 .lua/.dll 带不带标记都不影响加载。
 
 Write-Host '=== 1. standard config dir (junction) ==='
 if (IsReparsePoint $LinkPath) {
