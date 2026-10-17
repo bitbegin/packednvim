@@ -74,22 +74,25 @@ return {
           fd_opts = '--color=never --type f --type l --exclude .git --exclude .jj --exclude .local',
         },
 
-        -- 让 fzf 用 ASCII 画界面，而不是 Unicode 方块/竖线。
+        -- 只把 fzf **自己用来画界面**的歧义宽度字形换成 ASCII，而不是整个 --no-unicode。
         --
-        -- 原因：本发行版为中文把 ambiwidth 设为 double，于是东亚「歧义宽度」字符
-        -- 在终端里占 2 格。而 fzf 是在 Neovim 的终端缓冲区里**自己画界面**的，
-        -- 它不知道 ambiwidth 这回事 —— 它的默认指针 `▌`（U+258C）、标记 `┃`
-        -- 都属歧义宽度：fzf 以为占 1 格、终端按 2 格渲染，于是每行错位，
-        -- 分隔线与边框被截成残片，看起来就是屏幕上一根根的 `--`。
+        -- 演进过程（值得记下来，因为中间走错过）：
+        --   1. 一开始问题是屏幕上有两根 `--`，判断是 fzf 的 Unicode 字形在
+        --      ambiwidth=double 下占 2 格导致错位 —— 这个判断是对的。
+        --   2. 当时的修法用了 `--no-unicode`，它确实修掉了 `--`，
+        --      但紧接着出现了新现象：空查询时预览区残留字符（像散落的星点）。
+        --      而那个时间点正好在加上 --no-unicode 之后。
+        --   3. --no-unicode 是**一刀切**开关，会改变 fzf 内部的绘制路径。
+        --      换成下面这种「只覆盖具体字形」的做法，既能保持对齐，
+        --      又不动 fzf 的其余渲染逻辑。
         --
-        -- --no-unicode 让 fzf 全部改用 ASCII 字符，宽度恒为 1，彻底避开这个冲突。
-        -- 代价是失去那点方块字形，换来界面不歪 —— 与 listchars 用 ASCII、
-        -- gitsigns 符号列用 ASCII 是同一个取舍。
-        --
-        -- 请注意：这是**推断**（依据是同一类宽度冲突已在三处出现过），
-        -- 我没法在无头环境里看到 fzf 的实际界面。若改了仍不对，
-        -- 需要一张截图才能定论。
-        fzf_opts = { ['--no-unicode'] = true },
+        -- 默认值参考：pointer=▌(U+258C)、marker=┃(U+2503)、scrollbar=│(U+2502)，
+        -- 三者都是东亚「歧义宽度」字符。
+        fzf_opts = {
+          ['--pointer'] = '>',
+          ['--marker'] = '+',
+          ['--scrollbar'] = '|',
+        },
 
         winopts = {
           height = 0.85,
