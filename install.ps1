@@ -203,7 +203,26 @@ Write-Host ''
 
 Write-Host '=== 1. standard config dir (junction) ==='
 if (IsReparsePoint $LinkPath) {
-    Say ('already a link: ' + $LinkPath)
+    # 已经是一个链接：先看它指向谁。指向别的包时不能默默接管 ——
+    # 那意味着用户在两个发行版副本之间切换，必须把这件事说出来。
+    $curTarget = ''
+    try {
+        $t = (Get-Item -LiteralPath $LinkPath -Force).Target
+        if ($t) { $curTarget = [string](@($t)[0]) }
+    } catch { }
+    $curNorm = ($curTarget -replace '/', '\').TrimEnd('\')
+    $pkgNorm = ($Pkg -replace '/', '\').TrimEnd('\')
+    if ($curNorm -and ($curNorm -ne $pkgNorm)) {
+        Write-Host ('  NOTE: ' + $LinkPath + ' currently points to:')
+        Write-Host ('        ' + $curNorm)
+        Write-Host ('        re-pointing it to: ' + $pkgNorm)
+        & cmd /c rmdir /q "$LinkPath" 2>&1 | Out-Null
+        & cmd /c mklink /J "$LinkPath" "$Pkg" | Out-Null
+        if (Test-Path -LiteralPath ($LinkPath + '\init.lua')) { Say ('re-pointed to ' + $pkgNorm) }
+        else { Write-Warning 'could not re-point the config link' }
+    } else {
+        Say ('already a link to this package: ' + $LinkPath)
+    }
 } else {
     if (Test-Path -LiteralPath $LinkPath) {
         $bak = $LinkPath + '.bak-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
