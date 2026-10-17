@@ -85,6 +85,7 @@ mini.starter 的启动页等）不算「你会按的键」，所以不在下表 
 | `<leader>sn` | 普通 | 搜索：下一个结果 |
 | `<leader>sp` | 普通 | 搜索：上一个结果 |
 | `<leader>sr` | 普通 | 全项目替换（grug-far） |
+| `<leader>ss` | 普通 | 搜索：恢复上一次搜索界面（fzf resume） |
 | `<leader>su` | 普通 | 搜索：连被忽略的文件一起搜 |
 | `<leader>sw` | 普通 | 搜索：光标下单词 |
 

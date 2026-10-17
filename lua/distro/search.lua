@@ -297,6 +297,16 @@ function M._setup_keymaps()
   map('n', '<leader>sc', '<Cmd>cclose<CR>', { desc = '搜索：关闭结果窗口' })
   map('n', '<leader>sn', '<Cmd>cnext<CR>', { desc = '搜索：下一个结果' })
   map('n', '<leader>sp', '<Cmd>cprev<CR>', { desc = '搜索：上一个结果' })
+
+  -- 回到搜索结果的完整工作流（见 USAGE.md「搜索」一节）：
+  --   1. fzf 窗口里 <M-Esc>（Alt+Esc）= **隐藏**而非关闭，跳去文件改完再回来
+  --   2. 改完后按 <leader>ss 恢复同一个搜索界面（查询词、选中位置都保留）
+  --   3. 想让结果常驻：fzf 窗口里 alt-q 把选中/全部结果送进 quickfix，
+  --      之后 <leader>sn / <leader>sp 随时翻阅
+  -- resume 是 fzf-lua 的内建动作；若无历史记录它自己会提示，无需兜底。
+  map('n', '<leader>ss', function()
+    require('fzf-lua').resume()
+  end, { desc = '搜索：恢复上一次搜索界面（fzf resume）' })
 end
 
 function M.setup(opts)
