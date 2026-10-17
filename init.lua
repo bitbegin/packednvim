@@ -121,3 +121,30 @@ if vim.uv.fs_stat(user_cfg) then
     vim.notify('distro: 用户配置 .local/config/user.lua 出错：' .. tostring(err), vim.log.levels.ERROR)
   end
 end
+-- ---------------------------------------------------------------------------
+-- 双击（文件关联）启动时，进程的 cwd 是 Explorer 给的，常是 C:\Windows\System32
+-- 或包内 runtime\bin —— 于是 :pwd、rg 的默认搜索根、窗口标题都不对。
+-- 这里在 VimEnter 后把它挪到「被打开文件所在的目录」，只在明显不对时才动，
+-- 终端里正常 cd 到项目再启动不受影响。
+-- ---------------------------------------------------------------------------
+vim.api.nvim_create_autocmd('VimEnter', {
+    group = vim.api.nvim_create_augroup('distro_cwd_fix', { clear = true }),
+    callback = function()
+        local name = vim.api.nvim_buf_get_name(0)
+        if name == '' then return end
+        local cwd = vim.fn.getcwd():gsub('/', '\\'):lower()
+        local bad = cwd:match('^%a:\\$') ~= nil
+            or cwd:match('^%a:\\windows') ~= nil
+            or cwd:match('^%a:\\program files') ~= nil
+            or cwd:match('^%a:\\programdata') ~= nil
+        if not bad and vim.g.distro_root then
+            local root = tostring(vim.g.distro_root):gsub('/', '\\'):lower()
+            if cwd:find(root, 1, true) then bad = true end
+        end
+        if not bad then return end
+        local dir = vim.fn.fnamemodify(name, ':h')
+        if dir ~= '' and vim.fn.isdirectory(dir) == 1 then
+            vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+        end
+    end,
+})
