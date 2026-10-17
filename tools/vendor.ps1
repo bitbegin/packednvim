@@ -14,7 +14,7 @@
       4. 删掉 .git（发行版不需要历史，也省体积），记录体积与许可证文件名
       5. 回写 vendor/lock.json
 
-    为什么用浅克隆：45 个仓库走的是会间歇性拒绝 TLS 握手的代理，--depth 1 能把传输量
+    为什么用浅克隆：几十个仓库走的是会间歇性拒绝 TLS 握手的代理，--depth 1 能把传输量
     小一个数量级。克隆失败会重试，重试前清掉残留目录。
 
     为什么克隆后还要核对 HEAD：浅克隆拿到的是分支尖端，而尖端会动。如果实际拿到的
@@ -104,7 +104,6 @@ $START_REPOS = @(
     'lewis6991/gitsigns.nvim',
     'ibhagwan/fzf-lua',
     'folke/flash.nvim',
-    'chrisgrieser/nvim-spider',
     'keaising/im-select.nvim',
     'kkew3/jieba.vim',
     # 下面 5 个补进 start：它们的配置声明为常驻（pack='start'），
@@ -347,6 +346,28 @@ foreach ($p in $plan) {
     }
 
     if (-not $ok) { $failures += $p.Repo }
+}
+
+# --------------------------------------------------------------------
+# 4.5 清理栈外目录：选型（catalog/STACKS.toml -> selection.json）是唯一数据源。
+# 曾在栈里、后被移除的插件不会自己消失，会一直躺在 pack/ 里混进本地打的包
+# （CI 从零克隆不受影响）。nvim-spider 与 blink.lib 就这么漏过一回。
+# 只清磁盘目录；lock.json 里的历史记录有意保留（可复现凭证，见 health.lua）。
+# -Only 时计划不完整，跳过清理以免误删。
+# --------------------------------------------------------------------
+if (-not $Only) {
+    $plannedDirs = @{}
+    foreach ($p in $plan) { $plannedDirs[("$($p.Pack)/$($p.DirName)").ToLower()] = $true }
+    foreach ($which in @('start', 'opt')) {
+        $base = if ($which -eq 'start') { $startRoot } else { $optRoot }
+        if (-not (Test-Path $base)) { continue }
+        foreach ($dir in @(Get-ChildItem $base -Directory)) {
+            if (-not $plannedDirs.ContainsKey("$which/$($dir.Name)".ToLower())) {
+                Write-Host ("  清理栈外目录：pack/distro/{0}/{1}" -f $which, $dir.Name) -ForegroundColor Yellow
+                Remove-Item $dir.FullName -Recurse -Force
+            }
+        }
+    }
 }
 
 # --------------------------------------------------------------------

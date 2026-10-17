@@ -3,7 +3,8 @@
 这个目录是架构里预留的外部工具注入点。启动脚本会把 `<发行版>/bin` **前置**进 `PATH`，
 因此这里的工具优先于系统 PATH 上的同名工具，但**不会覆盖或改动系统里的任何东西**。
 
-Windows 与 Linux 两套二进制放在同一个目录，靠扩展名区分（`.exe` 即 Windows）。
+**每个平台一个包**，包里只有该平台那一份工具（由 CI 按平台现取，见 `tools/fetch-tools.ps1`）。
+本仓库在版本库里只保留 `im-select.exe`（上游产物名不含平台信息，无法可靠匹配）与许可证文件。
 
 **Neovim 基线**：`NVIM v0.13.0-dev-1828+g7e1ae5115f`
 
@@ -54,7 +55,7 @@ Windows 与 Linux 两套二进制放在同一个目录，靠扩展名区分（`.
 - `im-select.exe` —— im-select master@890b3eb1，产物 `im-select.exe（仓库 blob 890b3eb1）`
 
 原始压缩包留在 `build/downloads/`（该目录不进版本库）。要复现时重跑
-`pwsh -File tools/fetch-binaries.ps1` 即可，脚本会现场核对官方 SHA256。
+`pwsh -File tools/fetch-tools.ps1 -Platform <平台>` 即可，脚本会现场核对官方 SHA256。
 
 ## 许可证
 
@@ -78,10 +79,10 @@ copyleft 的含义是：你分发包含它的包时，需要同时提供对应�
 
 ## 注意事项
 
-- **Linux 上需要可执行位。** 从 Windows 复制出来的文件没有 `+x`，Linux 端首次使用要
-  `chmod +x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck`。
-  若这个仓库用 git 分发，提交时给 Linux 二进制打上可执行位：
-  `git update-index --chmod=+x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck`
+- **Linux 上需要可执行位。** 打出的包用 `tar.gz` 分发（zip 不保留可执行位），
+  且 `tools/fetch-tools.ps1` 取完就 `chmod +x`，所以正常途径不会丢。
+  若是手工解压/复制导致丢了：`chmod +x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck`。
+  二进制**不要**提交进 git —— `.gitignore` 已排除，git 历史不会因为后来的删除而变小。
 - 代理会中途断流，所以脚本用「限时重试 + 断点续传」而不是 `curl --retry`（`--retry` 对「传输停滞」不生效）。
 - 官方发布信息的 `digest` 字段若为空，脚本只校验大小并给出警告，不会假装校验通过。
 - **`im-select.exe` 的校验方式不同**：它没有 release 资源，是从仓库 `win/out/x64/` 直接取的
@@ -92,4 +93,4 @@ copyleft 的含义是：你分发包含它的包时，需要同时提供对应�
   `bash-language-server` 等都不随包分发，请自行安装。发行版通过 `vim.fn.executable()`
   探测，缺失时只在 `:checkhealth distro` 里报告，不报错。
 
-_本文件由 `tools/fetch-binaries.ps1` 自动生成，请勿手工编辑。_
+_本文件随工具版本更新手工维护；机器可读的 `manifest.json` 由 `tools/fetch-tools.ps1` 生成，不要手工编辑它。_

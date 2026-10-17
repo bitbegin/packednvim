@@ -16,9 +16,9 @@ python tools/parse_selection.py --stack full        --apply   # 换成全功能
 
 | 方案 | 勾选条目 | 需 vendor 的仓库 | 纯 Lua 条目 | 互斥格冲突 | 离线风险项 | 仍需自备的命令 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `minimal` | 45 | 24 | 38 | 0 | 2 | 6 |
-| **`recommended`（已套用）** | **63** | **45** | **52** | **0** | **3** | 6 |
-| `full` | 107 | 87 | 83 | 0 | 4 | 20 |
+| `minimal` | 43 | 24 | 36 | 0 | 2 | 6 |
+| **`recommended`（已套用）** | **59** | **43** | **48** | **0** | **3** | 6 |
+| `full` | 103 | 85 | 79 | 0 | 4 | 20 |
 
 **「互斥格冲突」这一列是机械校验出来的**，不是我说没有就没有：`tools/check-stack.py` 里有一张 30 个互斥格的表，逐个方案检查「同一格是否选了不止一个」。
 
@@ -107,16 +107,16 @@ python tools/check-stack.py --list   # 打印所有互斥格及其成员
 | 主题 | **保留 6 个**（见上表配色一行） |
 | 主心骨 | **mini**（确认）。`snacks.nvim` 保持不选 |
 | `im-select.exe` | **加入 `bin/`**。它没有 release 资源，是从仓库 `win/out/x64/` 直接取的裸文件，因此改用 **git blob 哈希**（`890b3eb1…`）固化内容。只在 Windows 上有意义，Linux 侧用系统的 `fcitx5-remote` / `ibus` |
-| 方案 | **`recommended`**（63 项 / 45 仓库） |
+| 方案 | **`recommended`**（59 项 / 43 仓库） |
 | 两个许可待核项 | **不用。** `nvim-tree/nvim-tree.lua`（API 报 NOASSERTION）与 `romgrk/barbar.nvim`（无 LICENSE 文件）已从目录中删除，目录条目 208 → 206 |
-| 打包方式 | **只打一个包**，内含 Windows 与 Linux 两套二进制。原「双 profile 出两个产物」与「按平台出包」两条设想都作废；代价是 `bin/` 的 102 MB 整体进包，已明确接受 |
+| 打包方式 | **每个平台一个包**（linux64 / linux-arm64 / win64 / darwin-arm64），各自带该平台的 Neovim、工具与解析器。原「只打一个包、内含两平台二进制」已作废 —— 那样每个包都要带一半用不到的东西 |
 | Python 工具链 | **不需要。** `bin/` 里没有 Python 格式化/检查工具 |
 
 ## 一个需要留意的体积事实
 
 去掉 `ruff`（51.6 MB）换上 `shellcheck`（51.0 MB）后，**`bin/` 净体积几乎没变**：102.8 MB → 102.3 MB。
 
-`shellcheck` 一点都不小——Windows 版 34.8 MB、Linux 版 16.2 MB，它是 Haskell 静态链接的产物。所以如果当初去掉 `ruff` 是为了省体积，这次替换并没有达到目的。另一个大头是 `stylua`（19.6 MB / 两平台）。不过**既然已定只打一个包**，这些体积无论如何都会整体进包，所以不必再为此纠结。
+`shellcheck` 一点都不小——Windows 版 34.8 MB、Linux 版 16.2 MB，它是 Haskell 静态链接的产物。所以如果当初去掉 `ruff` 是为了省体积，这次替换并没有达到目的。另一个大头是 `stylua`（19.6 MB / 两平台）。不过**既然已定每平台一个包**，每个包只带自己平台那一份（约 51 MB），不必再为此纠结。
 
 ## 仍待你定
 

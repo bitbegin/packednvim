@@ -77,6 +77,12 @@ function M.setup()
   conform.setup({
     formatters_by_ft = by_ft,
 
+    -- 「该缓冲区没有可用格式化器」不弹通知：WANT 已按「命令存在」过滤过，
+    -- 再提示只剩噪音。conform 真正的开关是 notify_no_formatters ——
+    -- （这里曾写 vim.g.conform_quiet = true，那是不存在的配置项，静默无效。）
+    -- notify_on_error 保持默认开启：格式化器**运行时**的失败值得知道。
+    notify_no_formatters = false,
+
     -- 保存时格式化，但有两个例外：
     --   1. 大文件（search.lua 打了 distro_bigfile 标记）—— 别在几 MB 的文件上跑格式化
     --   2. 没有可用格式化器的缓冲区 —— conform 会直接跳过，不报错
@@ -87,9 +93,6 @@ function M.setup()
       return { timeout_ms = 3000, lsp_format = 'fallback' }
     end,
   })
-
-  -- 通知里不要出现「formatter not found」这类噪音：我们已经在上面过滤过了
-  vim.g.conform_quiet = true
 end
 
 --- 供 health 报告：拿不到格式化器的语言清单

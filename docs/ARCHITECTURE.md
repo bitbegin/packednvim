@@ -25,40 +25,43 @@
 ```
 nvim-distro/
 ├── init.lua                     入口，只做一件事：加载 distro
+├── nvim.cmd / nvim.sh           启动脚本：XDG 隔离 + bin 前置 PATH + -u init.lua
 ├── lua/distro/
-│   ├── init.lua                 顺序编排：options → search → pack → keymaps → lsp
-│   ├── options.lua              全局选项（含 set ambiwidth=double）
-│   ├── keymaps.lua              键位定义，带 desc 以便 which-key / mini.clue 显示
-│   ├── pack.lua                 从 pack/distro/opt 按需 packadd
+│   ├── init.lua                 顺序编排：options → pack → plugins → search → lsp → format → keymaps
+│   ├── options.lua              全局选项（含 ambiwidth=single）
+│   ├── keymaps.lua              键位定义，带 desc 以便 which-key 显示
+│   ├── pack.lua                 从 pack/distro/opt 按需 packadd（懒加载）
+│   ├── platform.lua             平台差异的唯一权威源（exe 后缀 / 原生库后缀按插件家族）
 │   ├── lsp.lua                  vim.lsp.config + vim.lsp.enable，服务器探测
 │   ├── format.lua               conform.nvim 规格，先探测命令存在性
 │   ├── health.lua               :checkhealth distro 的报告
-│   └── plugins/                 每个插件一个配置文件，文件名即仓库名
+│   └── plugins/                 每个功能域一个配置文件（theme / mini / ui / …）
 ├── pack/distro/                 ← **构建产物，不进版本库**
-│   ├── start/                   编辑刚需，Neovim 启动时自动加载（31 个）
-│   └── opt/                     较重或按需使用，由 pack.lua 显式 :packadd（14 个）
+│   ├── start/                   编辑刚需，Neovim 启动时自动加载（35 个）
+│   └── opt/                     较重或按需使用，由 pack.lua 显式 :packadd（8 个）
+├── runtime/                     ← **随包的 Neovim 本体**：解析器由它亲自编译，ABI 不可能失配
 ├── vendor/
 │   ├── lock.json                每个仓库的 commit、分支、许可、字节数 —— **要提交**
-│   └── treesitter/
-│       ├── win64/parser/*.dll   Windows 预编译解析器
-│       ├── win64/queries/       对应的查询文件
-│       ├── linux64/parser/*.so
-│       └── linux64/queries/
-├── bin/                         随包分发的外部工具，Windows 与 Linux 两套靠扩展名区分
+│   └── treesitter/site/         预编译解析器 + 查询（每平台一个包，不再分平台子目录）
+├── bin/                         随包的外部工具 —— CI 按平台现取，**不进版本库**
 │   ├── rg[.exe]  fzf[.exe]  fd[.exe]                    搜索与查找
 │   ├── stylua[.exe]  shfmt[.exe]  shellcheck[.exe]      格式化与检查
-│   ├── im-select.exe            Windows 输入法切换（Linux 用系统 fcitx5-remote/ibus）
-│   ├── README.md                版本清单（自动生成）
-│   ├── manifest.json            同一份清单的机器可读形式
+│   ├── im-select.exe            例外留在版本库：上游产物名不含平台信息，无法可靠匹配
+│   ├── README.md / manifest.json  版本清单（自动生成，manifest 供 checkhealth 读取）
 │   └── licenses/                各工具的许可证全文，分发时必须附带
 ├── tools/
 │   ├── parse_selection.py       目录 → build/selection.json
 │   ├── check-stack.py           校验方案里没有同格多选
 │   ├── verify-repos.py          核验目录里的仓库地址是否真实存在
-│   ├── vendor.ps1               按 selection.json + lock.json 拉取插件到 pack/（仅打包机联网）
-│   ├── build-parsers.ps1        预编译 tree-sitter 解析器
-│   ├── verify-offline.ps1       断网冒烟测试
-│   └── package.ps1              产出一个包（内含两平台二进制）
+│   ├── verify-binaries.py       校验 bin/ 完整性
+│   ├── vendor.ps1               按 selection.json + lock.json 拉取插件（仅打包机联网）
+│   ├── fetch-runtime.ps1        取 Neovim 本体（按平台）
+│   ├── fetch-tools.ps1          取随包工具（按平台）
+│   ├── harvest.lua              CI 里用**包内那个 nvim** 编译 tree-sitter 解析器
+│   ├── package.ps1              组装并归档（win = zip，其余 = tar.gz）
+│   ├── smoke.lua                冒烟断言：CI 逐平台对刚打出的包执行
+│   ├── gen-keymaps.py / dump-keymaps.lua   生成 docs/KEYMAPS.md（对比干净 nvim）
+│   └── sync-to-package.ps1      把仓库配置同步进已解压的包目录
 └── catalog/                     选型目录（唯一数据源）
 ```
 
@@ -86,14 +89,13 @@ nvim-distro/
 
 代价是**版本锁定要自己做**：用 `vendor/lock.json` 记录每个仓库的 commit，`tools/vendor.*` 按它拉取，绝不解析远端分支。
 
-## 3. 一个包：内容由 STACKS 决定
+## 3. 每个平台一个包：内容由 STACKS 决定
 
-已定：**只打一个包**，里面同时含 Windows 与 Linux 两套二进制。
+已定：**四个平台各出一个完整自足的包** —— `linux64` / `linux-arm64` / `win64` / `darwin-arm64`。每个包自带该平台的 Neovim 本体、随包工具、tree-sitter 解析器与插件原生库。原「只打一个包、内含 Windows 与 Linux 两套二进制」已作废 —— 那样每个包都要带一半用不到的东西（光 `bin/` 就多背约 51 MB）。
 
-- 勾选内容由 [`../catalog/STACKS.toml`](../catalog/STACKS.toml) 的 `recommended` 方案决定（63 条 / 45 个仓库）。`tools/package.ps1` 读 `build/selection.json` 里勾中的仓库来拷贝。
-- `pack/distro/start/` 放轻量必备件，Neovim 启动即加载；`pack/distro/opt/` 放较重的功能件，由 `lua/distro/pack.lua` 按需 `:packadd`。**这个划分按「启动耗时」而不是按 profile** —— 只有一个包，不再需要 profile 开关。
+- 勾选内容由 [`../catalog/STACKS.toml`](../catalog/STACKS.toml) 的 `recommended` 方案决定（59 条 / 43 个仓库）。`tools/package.ps1` 按平台组装归档。
+- `pack/distro/start/` 放轻量必备件，Neovim 启动即加载；`pack/distro/opt/` 放较重的功能件，由 `lua/distro/pack.lua` 按需 `:packadd`。**这个划分按「启动耗时」而不是按 profile** —— 不再需要 profile 开关。
 - 目录里的 `档位` 字段（`core` / `ide` / `extra`）和 `parse_selection.py --preset` 仍然可用，但**只是选型期的辅助手段，不参与打包**。真正的选择以 `STACKS.toml` 为准。
-- 原设想的「双 profile 产出 `dist-core` / `dist-ide` 两个产物」已作废；「按平台出包」也已作废。代价是包体积为两平台之和（光 `bin/` 就约 102 MB），这是明确接受的取舍。
 
 ## 4. 「零联网」怎么保证，而不只是声明
 
@@ -113,18 +115,18 @@ nvim-distro/
 | `markdown-preview` / `pyright` / LuaLS | 部分 LSP 有 `download` 选项 | 关掉所有 `download` 类选项 |
 | `rust-analyzer` / `gopls` | 可能尝试拉取工具链或模块 | 在 `settings` 里禁用，并在离线环境下验证 |
 
-**验证方法**（不能只靠声明）：`tools/verify-offline.ps1` 在断网或防火墙全阻的环境下解压到干净目录、用全新 `HOME`/`XDG_CONFIG_HOME` 首次启动，检查：启动无报错、`:checkhealth distro` 全绿、插件目录没有新增文件（对比启动前后的文件清单哈希）。第三条是最关键的一条——它直接抓「首次运行悄悄落盘」的行为。
+**验证方法**（不能只靠声明）：CI 在每个平台的 runner 上对**刚打出来的包**跑 `tools/smoke.lua`：解压归档 → 用包内 nvim 启动 → 断言（11 个配置分组载入、解析器逐个可加载、随包工具与原生库就位、历史踩坑的行为回归）。更严格的一档 —— 断网环境下解压到干净目录、对比启动**前后**插件目录的文件清单哈希（直接抓「首次运行悄悄落盘」）—— 目前未脚本化，需要时手工执行。
 
 ## 5. Tree-sitter 解析器方案（最容易翻车的一环）
 
 这是整个离线包里技术风险最高的一块，单独说。
 
 - **只在打包机上满足编译前提**：`curl`、`tar`、`tree-sitter-cli ≥ 0.26.1`（注意不是 npm 那个）、C 编译器。
-- **产物**：`parser/<lang>.dll`（Windows）/ `parser/<lang>.so`（Linux）+ `queries/<lang>/*.scm`。Neovim 会从任意 runtimepath 条目加载 `parser/`，优先级是 用户配置 > 插件 > 内置，所以放在 `vendor/treesitter/<平台>/` 并加入 rtp 即可。
+- **产物**：`parser/<lang>.dll`（Windows）/ `parser/<lang>.so`（Linux / macOS）+ `queries/<lang>/*.scm`。Neovim 会从任意 runtimepath 条目加载 `parser/`，优先级是 用户配置 > 插件 > 内置，所以放在 `vendor/treesitter/site/`（每平台一个包后不再分平台子目录）并加入 rtp 即可。
 - **ABI 强耦合**：0.12.6 内置 tree-sitter 0.26.13，支持 ABI 15 的解析器；版本不匹配的解析器**加载失败**。你用的是 0.13 nightly，ABI 可能随 nightly 变动。
-  → 因此：**每次升级 Neovim 都要重跑 `tools/build-parsers.ps1`**，并在 `verify-offline` 里逐个 `load` 每个解析器、把失败的列出来。这条必须写进你的升级流程，否则表现是「高亮突然全没了」而不是报错。
+  → 因此：**每次升级 Neovim 都要重新构建包**（CI 会用包内那个 nvim 重跑 `tools/harvest.lua` 重新编译），`tools/smoke.lua` 会逐个加载解析器、把失败的列出来。这条必须写进你的升级流程，否则表现是「高亮突然全没了」而不是报错。
 - **最小可用集是零**：Neovim 自带 C / Lua / Markdown / Vimscript / Vimdoc / query 的解析器。所以第一版可以先不 vendor 解析器，跑起来再补，风险最低。
-- 两个平台必须**分别构建**，不能共用：`.dll` 与 `.so` 不通用，且架构相关。
+- 四个平台必须**分别构建**（在各自平台的 CI 作业里），不能共用：`.dll` 与 `.so` 不通用，且架构相关（arm64 与 x64 也不通用）。
 
 ## 6. LSP 方案（不用 mason）
 
@@ -171,22 +173,27 @@ end
 
 ## 8. 从目录到产物的完整流程
 
+完整流程由 [`.github/workflows/release.yml`](../.github/workflows/release.yml) 自动执行，核心步骤：
+
 ```bash
 # 1. 你在目录里勾选（或套用预设）
-python tools/parse_selection.py --preset ide --apply
 python tools/parse_selection.py              # → build/selection.json
+python tools/check-stack.py                  # 机械校验：方案里没有同格多选
 
 # 2. vendoring（这一步在打包机上联网，最终用户不参与）
-pwsh tools/vendor.ps1                        # 按 lock.json clone 到 pack/，写入 vendor/lock.json
+pwsh tools/vendor.ps1                        # 按 lock.json clone 到 pack/，并清理栈外目录
 
-# 3. 预置编译产物（telescope-fzf-native / blink.cmp / jieba / treesitter parsers）
-pwsh tools/build-parsers.ps1 -Platform win64
+# 3. 逐平台构建（每个 CI 作业内完成，无跨作业传递）
+pwsh tools/fetch-runtime.ps1 -Platform win64 -Tag nightly   # Neovim 本体 → runtime/
+pwsh tools/fetch-tools.ps1   -Platform windows-x64          # 随包工具 → bin/，写 bin/manifest.json
+#    （blink.cmp 原生库从官方 release 取并校验 sha256；
+#      jieba 的 Rust 后端在作业里就地构建，构建树随即清掉）
+nvim --headless -u init.lua -l tools/harvest.lua            # 用**包内那个 nvim** 编译解析器
 
-# 4. 打包：按 selection.json 里勾中的仓库拷贝，产出一个同时含两平台二进制的包
-pwsh tools/package.ps1
+# 4. 组装归档（win = zip，其余 = tar.gz —— zip 不保留可执行位）
+pwsh tools/package.ps1 -Platform win64
 
-# 5. 离线冒烟验收
-pwsh tools/verify-offline.ps1
+# 5. 冒烟验收：在**刚打出来的包**上，用包内 nvim 跑 tools/smoke.lua 的断言
 ```
 
 vendoring 时顺手做的事（`vendor/lock.json` 里记录）：仓库 commit、SPDX 许可标识、体积。许可证必须记录，因为分发时要能说明每一项的来源与条款。
@@ -209,11 +216,11 @@ vendoring 时顺手做的事（`vendor/lock.json` 里记录）：仓库 commit�
    | shellcheck | 0.11.0 | **34.8 MB** | 16.2 MB | 检查 Shell | **GPL-3.0（copyleft）** |
    | im-select | master@890b3eb1 | 0.13 MB | —（Linux 用系统 fcitx5-remote/ibus） | Windows 输入法自动切换 | MIT |
 
-   `bin/` 合计约 **102.4 MB**，两平台各约 51 MB。**`shellcheck` 是最大的一项**（Haskell 静态链接，Windows 版尤其大）。
+   `bin/` 两平台合计约 **102.4 MB**，单个包里只带本平台那一份（约 51 MB）。**`shellcheck` 是最大的一项**（Haskell 静态链接，Windows 版尤其大）。
 
    **`im-select.exe` 的校验方式与其余不同**：它没有 release 资源，是从仓库 `win/out/x64/` 直接取的裸文件，上游不给 SHA256。脚本因此改用 **git blob 哈希**（`890b3eb1…`，由 GitHub API 提供）校验——这同样能锁到字节级内容，只是校验对象换成了 git 的对象哈希。`manifest.json` 里也记录它的 SHA256 供日后核对。
 
-   两个体积事实值得知道：一是 `shellcheck` 与刚被移除的 `ruff`（51.6 MB）体积几乎一样，所以**换工具没省下体积**；二是**已定只打一个包**，所以这 102 MB 会整体进包 —— 「按平台出包只带一半」这条已经作废。
+   两个体积事实值得知道：一是 `shellcheck` 与刚被移除的 `ruff`（51.6 MB）体积几乎一样，所以**换工具没省下体积**；二是**已定每平台一个包**，每个包只背自己那约 51 MB —— 「只打一个包、带两平台二进制」这条已经作废。
 
    **`shellcheck` 是 `bin/` 里唯一的 copyleft 项**（GPL-3.0），其余都是 MIT / Apache-2.0 / MPL-2.0 / BSD 这类宽松许可。分发含它的包时需附对应源码或书面承诺，并保持与 MIT 配置代码可分离。
 

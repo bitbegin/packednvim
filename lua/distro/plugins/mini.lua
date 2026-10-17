@@ -142,11 +142,11 @@ return {
             local dir = vim.fn.stdpath('state') .. '/sessions'
             vim.fn.mkdir(dir, 'p')
             cfg = { directory = dir }
-            -- 启动页「恢复会话 <leader>ss」引用的就是这个映射 —— 它曾经只出现在
-            -- 启动页的文字里，实际没注册，按了没反应。
-            vim.keymap.set('n', '<leader>ss', function()
-              require('mini.sessions').select()
-            end, { desc = '恢复会话（mini.sessions）' })
+            -- 刻意**不**注册 <leader>ss：它归 lua/distro/search.lua 的「fzf resume」
+            -- 所有。这里曾注册过一份 MiniSessions.select，但 plugins 分组先于
+            -- search 模块加载，同键后定义者胜 —— 这份映射从未真正生效过，
+            -- 只会让「谁拥有 ss」变成两处各说各话。恢复会话的入口就是启动页
+            -- 那一项；想绑键请在 .local/config/user.lua 里加。
           elseif name == 'map' then
             cfg = { window = { config = { relative = 'editor', border = 'rounded' } } }
           end

@@ -66,7 +66,8 @@ nvim.sh           Linux/macOS 启动脚本
 bin/              随包工具（rg / fzf / fd / stylua / shfmt / shellcheck / im-select）
 lua/distro/       配置本体
 pack/distro/      插件：start/ 启动即加载，opt/ 按键才加载
-vendor/           lock.json（可复现凭证）+ prebuilt/（两平台的 tree-sitter 解析器）
+vendor/           lock.json（可复现凭证）+ treesitter/site/（本平台的 tree-sitter 解析器）
+runtime/          Neovim 本体（解析器就是由它编译的）
 docs/             文档
 VERSION           这个包是什么、怎么来的
 ```
@@ -215,32 +216,32 @@ Vim 文档明确说明这是两个独立选项。而分工不同：
 
 ### 原理 4：随包的 tree-sitter 解析器必须主动挂上 runtimepath
 
-解析器与查询文件打包在 `vendor/prebuilt/<平台>/neovim-data/site/` 下。
+解析器与查询文件打包在 `vendor/treesitter/site/` 下。
 **Neovim 与 nvim-treesitter 只在 runtimepath 上找 `parser/` 与 `queries/`，
 不会主动去翻包里的 `vendor/` 目录。**
 
 所以 `init.lua` 会把该目录 append 进 runtimepath。不挂上去的话，
-包里那 20 个解析器就是纯死重量 —— 这个现象在第一次实机验收时真的出现了：
-包里 20 个解析器，运行时一个都看不见。
+包里那二十来个解析器就是纯死重量 —— 这个现象在第一次实机验收时真的出现了：
+包里二十来个解析器，运行时一个都看不见。
 
 用 `append` 而不是 `prepend`：Neovim 自带 c/lua/markdown/vim 等解析器，
 那些与它自身的 ABI 必然匹配，让它们优先更稳；我们补的是 Neovim 没有的语言。
 
-### 原理 5：平台相关的产物，靠文件扩展名共存于同一个包
+### 原理 5：平台相关的产物，只带本平台那一份
 
-按决定只出一个包（同时支持 Windows 与 Linux）。但有三样东西是**平台相关**的：
+**每个平台一个包**，所以包里不会有别的平台的产物。三样平台相关的东西：
 
-| 产物 | Windows | Linux |
+| 产物 | Windows | Linux / macOS |
 | --- | --- | --- |
 | tree-sitter 解析器 | `parser/<lang>.dll` | `parser/<lang>.so` |
-| blink.cmp 原生库 | `libblink_cmp_fuzzy.dll` | `libblink_cmp_fuzzy.so` |
-| jieba cdylib | `jieba_vim_rs.dll` | `jieba_vim_rs.so` |
+| blink.cmp 原生库 | `libblink_cmp_fuzzy.dll` | Linux `.so` / macOS `.dylib` |
+| jieba cdylib | `jieba_vim_rs.dll` | Linux 与 macOS 都是 `.so` |
 
-**扩展名不同，所以可以同包共存**，运行时由 `init.lua` 按平台选目录
-（`vendor/prebuilt/win64` 或 `linux64`），插件的加载器自己按扩展名找。
-
-这也是为什么包比较大（解压约 165 MB）：`bin/` 里同时装了两个平台的工具，
-`vendor/prebuilt/` 里同时装了两个平台的解析器。
+扩展名的**规则**仍然要有一处权威定义 —— `lua/distro/platform.lua` 按插件家族
+给出（blink 在 macOS 用 `.dylib` 而 jieba 用 `.so`，两家加载器约定不同，统一不了）。
+历史上曾用「扩展名不同 → 两平台产物共存一个包」的布局（`vendor/prebuilt/win64|linux64/`），
+改为每平台一包后已废弃；打包脚本与冒烟断言取的扩展名都来自 platform.lua，
+避免「断言写错比没有断言更糟」。
 
 ### 原理 6：`bin/` 前置进 PATH，而不是依赖系统安装
 
@@ -330,7 +331,7 @@ nvim --headless -u init.lua -c "lua for _,l in ipairs({'bash','python','yaml','t
    ```
    （它会下载语法并用 tree-sitter CLI 编译，需要 `tree-sitter` 与 `cc`/MSVC）
 2. 把产出的 `parser/*` 复制进包里的
-   `vendor/prebuilt/<平台>/neovim-data/site/parser/`，覆盖旧文件。
+   `vendor/treesitter/site/parser/`，覆盖旧文件。
    **Windows 上记得把 `.so` 改名成 `.dll`** —— nvim-treesitter 会把文件名硬编码成
    `.so`，而 Neovim 在 Windows 只按 `.dll` 找（见原理 4）。
 
@@ -447,7 +448,7 @@ grep -rn 'fillchars\|listchars\|statuscolumn' pack/distro/start/ | grep -P '[^\x
 `chmod +x bin/rg bin/fzf bin/fd bin/stylua bin/shfmt bin/shellcheck`。
 
 **没有语法高亮**
-`vendor/prebuilt/<平台>/` 是否存在、里面是否有 `parser/*.dll`（Windows）。
+`vendor/treesitter/site/` 是否存在、里面是否有 `parser/*.dll`（Windows）或 `parser/*.so`（Linux/macOS）。
 `init.lua` 会在启动时把该目录挂上 runtimepath；若目录不存在会静默跳过，
 可用 `:lua print(vim.g.distro_treesitter_dir)` 查看是否挂上。
 

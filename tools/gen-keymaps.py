@@ -261,7 +261,8 @@ def render(mappings: dict[tuple[str, str], tuple[str, str, str]], total_before: 
     lines.extend(render_plain(plain))
 
     # LSP 的键位是按缓冲区设的（LspAttach 时），不是全局键位，所以上面那张表抓不到。
-    # 它们的来源是 lua/distro/lsp.lua，数量少且稳定，这里如实列出。
+    # 它们的来源是 lua/distro/lsp.lua，这里是一份**手抄副本** —— 改 lsp.lua 时
+    # 必须同步改这里（`<C-k>` 改 `<leader>k` 时就漏过一回，抄本比真实落后一个版本）。
     w("## LSP 键位（打开带语言服务器的文件后才生效）")
     w("")
     w("这些键位由 `lua/distro/lsp.lua` 在 `LspAttach` 时按缓冲区设置，")
@@ -276,7 +277,7 @@ def render(mappings: dict[tuple[str, str], tuple[str, str, str]], total_before: 
         ("`gi`", "跳转到实现"),
         ("`gt`", "跳转到类型定义"),
         ("`K`", "悬停文档"),
-        ("`<C-k>`", "参数签名"),
+        ("`<leader>k`", "参数签名（不是 <C-k>，那个是窗口上移）"),
         ("`<leader>rn`", "重命名符号"),
         ("`<leader>ca`", "代码动作"),
         ("`<leader>ct`", "整理 imports"),

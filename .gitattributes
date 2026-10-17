@@ -5,7 +5,7 @@
 # bin/ 里放的是可执行文件，其中 Linux 那份是 ELF 二进制。
 # 必须禁止换行转换（-text），否则 git 会把 LF 改成 CRLF，直接改坏 Linux 的二进制。
 bin/*            -text -diff
-bin/*.md         text
+bin/*.md         text diff
 bin/*.json       text
 bin/licenses/**  text
 
