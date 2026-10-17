@@ -1,0 +1,28 @@
+# Neovide 的 GUI 配置，随发行版一起分发。
+#
+# 为什么放在包里而不是用户的 %APPDATA%\neovide\config.toml：
+#   1. 配置跟着包走，换机器 / 换目录不用重配
+#   2. 不污染用户全局设置
+# 启动器 neovide.cmd / neovide.sh 会把它设成 NEOVIDE_CONFIG 指过去。
+#
+# 注意：这里只放 GUI 外观。编辑器行为（键位、插件、LSP）一律在 lua/ 里，
+# 否则同一套设置的真相会被劈成两半，排查时非常难受。
+
+[font]
+# 主字体：等宽 + Nerd Font 图标。
+normal = ["JetBrainsMono NFM", "JetBrainsMono Nerd Font"]
+size = 13.0
+
+# 中文回退。可选值按你机器上实际装了的来：
+#   Microsoft YaHei Mono / Microsoft YaHei / Sarasa Mono SC / Noto Sans Mono CJK SC
+# 不配这一项，中文会显示成方块 —— Neovide 内置的字体不含 CJK 字形。
+[[font.normal]]
+family = "Sarasa Mono SC"
+
+[[font.normal]]
+family = "Microsoft YaHei"
+
+[box-drawing]
+# 用字体自带字形画框线。Nerd Font / Sarasa 都自带，
+# 视觉上与终端一致；若发现框线错位可改成 "native"。
+mode = "font-glyph"

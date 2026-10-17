@@ -158,3 +158,35 @@ opt.synmaxcol = 500
 -- 那里还负责大文件降级与 quickfix 双击跳转，集中在一起更好维护。
 opt.path:append('**')          -- gf / :find 能递归查找
 opt.wildignore:append({ '*/node_modules/*', '*/.git/*', '*/target/*' })
+
+-- ---------------------------------------------------------------------------
+-- GUI（Neovide）
+-- ---------------------------------------------------------------------------
+-- 只在 Neovide 里生效。放在这里而不是单独文件，是因为它们本质上是「外观选项」，
+-- 和上面的 number/relativenumber 是一类东西；拆成 gui.lua 反而让人以为
+-- 编辑器行为也被劈成了两半。
+--
+-- 启动器 neovide.cmd / neovide.sh 负责让 nvim 加载本配置；GUI 外观（字体、
+-- 窗口）放在随包的 neovide.toml 里，由 Neovide 自己读。
+if vim.g.neovide then
+  -- 缩放。高分屏上 1.0 通常偏小，但别设太大 —— 设过头会显得字傻大。
+  vim.g.neovide_scale_factor = 1.0
+
+  -- 光标滑动动画：默认 0.1 秒。这是 Neovide 最有用的特性之一
+  -- （眼睛能跟上光标跳到哪了），但也有人嫌晃，按需改大或设 0 关掉。
+  vim.g.neovide_cursor_animation_length = 0.1
+  vim.g.neovide_cursor_trail_size = 0.8
+
+  -- 平滑滚动同理。
+  vim.g.neovide_scroll_animation_length = 0.2
+
+  -- macOS 上 Cmd 会被 Neovide 当作 Alt 上报。Windows / Linux 不需要，
+  -- 误开反而会让 Win/Super 键失去系统层面的作用。
+  if vim.fn.has('mac') == 1 then
+    vim.g.neovide_input_use_logo = true
+  end
+
+  -- 标题栏显示当前文件，切换窗口时能认出是哪个 Neovide。
+  vim.o.title = true
+  vim.o.titlestring = 'Neovim - %t'
+end

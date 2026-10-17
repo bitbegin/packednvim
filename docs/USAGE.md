@@ -126,12 +126,99 @@ Lua 的 `luacheck` 没有官方预编译产物，需自行安装或构建——�
 
 ---
 
+## GUI（Neovide）
+
+终端之外，本发行版也可以用 [Neovide](https://neovide.dev/) 以图形界面运行。
+**Neovim 本体不变**——Neovide 只是个前端，插件、LSP、键位全都不受影响。
+
+### 前置
+
+**Windows（x64）与 Linux（x64）已经随包带了 Neovide**，在 `bin/` 下，开箱即用。
+其余平台需要自行安装（见下）。
+
+自行安装时：
+
+- Windows：装官方 `neovide.msi`，或 `scoop install neovide`
+- Linux：发行版仓库或 [releases](https://github.com/neovide/neovide/releases)
+- macOS：只能自装（官方只发布 `.dmg`，无法像单文件工具那样塞进 `bin/`）
+
+启动器查找顺序：`NEOVIDE_EXE` → 随包 `bin/` → PATH。所以**随包那份优先于你系统里装的**。
+
+### 各平台的随包情况
+
+| 平台 | 随包 Neovide | 说明 |
+| --- | --- | --- |
+| Windows x64 | ✅ `bin/neovide.exe` | 官方产物是单个裸 exe，无伴随目录 |
+| Linux x64 | ✅ `bin/neovide` | 官方产物是单个裸二进制 |
+| Linux arm64 | ❌ | 上游**没有** arm64 产物 |
+| macOS arm64 | ❌ | 上游只发布 `.dmg`（`tar` 处理不了） |
+
+后两个平台启动器会明确报错并提示装法，`:checkhealth distro` 也会说明，
+**不影响终端模式**——`nvim.cmd` / `nvim.sh` 照常可用。
+
+### 启动
+
+用**随包的启动器**，不要直接开 `neovide.exe`：
+
+```powershell
+# Windows
+.\neovide.cmd
+.\neovide.cmd docs\USAGE.md     # 直接打开某个文件
+```
+
+```sh
+# Linux / macOS
+./neovide.sh
+./neovide.sh docs/USAGE.md
+```
+
+### 为什么必须用启动器
+
+Neovide 自己负责拉起 `nvim` 进程，**不会读你仓库里的 `init.lua`**。启动器做三件事：
+
+1. **指向本包的 Neovim 与 init.lua。** 等价于：
+   ```
+   neovide --neovim-bin <包内 nvim> -- -u <包内 init.lua>
+   ```
+   注意 `--neovim-bin` 必须写在 `--` **之前**：写在后面会被当成 nvim 的参数而报未知选项。
+   `--` 之后的参数（`-u`、文件名）由 Neovide **原样**交给 nvim。
+
+2. **隔离 XDG 四个目录**，让配置与数据都落在包内的 `.local/` 下。
+   这一点**不能靠 init.lua 做**：Neovim 在加载 init.lua 之前就已经解析完
+   `stdpath()` 了，那时再改环境变量为时已晚。所以必须由启动器在**启动 Neovide 之前**
+   设好——Neovide 拉起的子进程会继承这套环境。
+
+3. **把随包的 `bin/` 前置到 PATH**，保证用的是随包的 `rg` / `fzf` / `stylua`；
+   同时设 `TMPDIR`（本 Windows nightly 缺了它，`tempname()` 会返回空串，进而弄坏 fzf-lua）。
+
+### 外观配置
+
+GUI 外观放在随包的 [`neovide.toml`](../neovide.toml) 里（字体、字号、框线），
+启动器会把它设成 `NEOVIDE_CONFIG` 指过去，因此**设置跟着包走**，
+不会写进你的 `%APPDATA%\neovide\config.toml`。
+
+> ⚠️ 默认字体不含中文字形。`neovide.toml` 里已配了 Sarasa Mono SC 与
+> Microsoft YaHei 作为回退，**如果你的机器上这两个都没有**，中文会显示成方块。
+> 改成你实际装了的等宽中文字体即可。
+
+编辑器侧的行为（光标动画、缩放等）在 `lua/distro/options.lua` 的 GUI 一节，
+只在 `vim.g.neovide` 为真时生效，终端模式下不受影响。
+
+### 排错
+
+| 现象 | 原因 |
+| --- | --- |
+| `Cannot find Neovide` | 没装或不在 PATH；设 `NEOVIDE_EXE` |
+| 中文全是方块 | `neovide.toml` 里的回退字体本机没有 |
+| 启动后是「裸 Neovim」 | 绕过了启动器直接开 `neovide.exe`，没带 `-u` |
+| 图标 / 字体不对 | 终端里正常、GUI 里不对 → 改 `neovide.toml` 的 `[font]` |
+
+---
+
 ## 会话
 
 `mini.sessions` 已启用，会话文件放在发行版自己的 `stdpath('state')/sessions` 下，
-**不会污染**你机器上其它 Neovim 配置的会话。
-
----
+**不会污染**你机器上其它 Neovim 配置的会话。---
 
 ## 关于「没看到某个功能」
 
