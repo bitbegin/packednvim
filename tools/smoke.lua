@@ -80,6 +80,11 @@ check('tempname() 非空（TMPDIR 回归）', vim.fn.tempname() ~= '')
 check('switchbuf 开新标签页', vim.o.switchbuf:find('newtab') ~= nil)
 check('搜索键位 sg/sG 已注册',
   vim.fn.maparg('<leader>sg', 'n') ~= '' and vim.fn.maparg('<leader>sG', 'n') ~= '')
+-- fzf-lua 加载时要建 RPC server；darwin 曾因 socket 路径超 104 字节上限
+-- 导致整个模块加载失败（我们在 plugins/search.lua 预建了短地址来绕开）。
+check('fzf-lua RPC server 已建立',
+  type(vim.g.fzf_lua_server) == 'string' and vim.g.fzf_lua_server ~= '',
+  tostring(vim.g.fzf_lua_server))
 
 -- ---- 7. 用户覆盖层（若用户放了配置，必须能加载）-------------------------
 local user_cfg = root .. '/.local/config/user.lua'

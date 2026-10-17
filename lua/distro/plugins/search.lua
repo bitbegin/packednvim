@@ -24,6 +24,31 @@ return {
     names = 'fzf-lua',
     pack = 'start',
     setup = function()
+      -- 先替 fzf-lua 把 RPC server 建好（短地址），再 require 它。
+      --
+      -- 原因：fzf-lua 的 init.lua 在**模块加载时**就会执行
+      --   serverstart("fzf-lua." .. os.time())   -- 相对名
+      -- 失败直接 error()，整个模块加载不了。darwin 的 CI 冒烟首跑就是这么炸的：
+      -- 相对名解析出的 socket 路径（包内 .local/tmp/... 一长串，约 111 字符）
+      -- 超过了 unix domain socket 的 **104 字节**上限 -> EINVAL。
+      -- Windows 用命名管道没有长度限制；Linux 上限 108、路径恰好短几字符才幸免
+      -- —— 但真实用户把包装进深目录时 Linux 同样可能超限。
+      --
+      -- fzf-lua 留了口子：`if not vim.g.fzf_lua_server then`。
+      -- 我们抢先建一个短地址（Unix 放 /tmp 下，一定存在且短），
+      -- 它就跳过自己的创建。os.time + 随机数保证多实例不冲突；
+      -- 万一失败则不设值，留给 fzf-lua 走它自己的路径
+      -- （那样错误会照常出现在 reg.failed，冒烟能看见）。
+      if not vim.g.fzf_lua_server then
+        local addr = vim.fn.has('win32') == 1
+            and ('fzf-lua-%d-%d'):format(os.time(), math.random(100000, 999999))
+            or ('/tmp/fzf-lua-%d-%d'):format(os.time(), math.random(100000, 999999))
+        local ok, srv = pcall(vim.fn.serverstart, addr)
+        if ok and srv and srv ~= '' then
+          vim.g.fzf_lua_server = srv
+        end
+      end
+
       local fzf = require('fzf-lua')
 
       fzf.setup({
