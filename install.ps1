@@ -37,13 +37,16 @@ $StateFile = Join-Path $StateDir 'install-state.json'
 $NvimExe    = Join-Path $Pkg 'runtime\bin\nvim.exe'
 $NeovideExe = Join-Path $Pkg 'bin\neovide.exe'
 $InitLua    = Join-Path $Pkg 'init.lua'
-$DirectLine = if (Test-Path -LiteralPath $NeovideExe) {
-    '"' + $NeovideExe + '" -- -u "' + $InitLua + '" "%1"'
-} else {
-    '"' + $NvimExe + '" -u "' + $InitLua + '" "%1"'
+# 注意：不要写 `$x = if (...) {...} else {...}`、也不要写多行 @() 管道 ——
+# 这套 install.ps1 要在 Windows PowerShell 5.1 下运行（powershell.exe），
+# 那些写法 5.1 会报 "Unexpected token ')'"。老老实实用语句块。
+$DirectLine = '"' + $NvimExe + '" -u "' + $InitLua + '" "%1"'
+if (Test-Path -LiteralPath $NeovideExe) {
+    $DirectLine = '"' + $NeovideExe + '" -- -u "' + $InitLua + '" "%1"'
 }
 
-$CmdLine = if ($Direct) { $DirectLine } else { 'cmd /c "' + $NvimCmd + '" "%1"' }
+$CmdLine = 'cmd /c "' + $NvimCmd + '" "%1"'
+if ($Direct) { $CmdLine = $DirectLine }
 
 function Write-Step($msg) { Write-Host "  $msg" }
 
@@ -152,11 +155,14 @@ if (-not (Test-Path -LiteralPath $NvimCmd)) {
 
 # -File 调用时 "-Ext md,txt" 会作为**一个**字符串传进来，必须再按逗号切开；
 # 否则会建出 "packednvim.md,txt" 这种不存在的扩展名（实测踩到）。
-$exts = @(
-    $Ext | ForEach-Object { $_ -split ',' } |
-    ForEach-Object { $_.Trim().TrimStart('.') } |
-    Where-Object { $_ }
-)
+$exts = @()
+foreach ($item in $Ext) {
+    $parts = $item -split ','
+    foreach ($part in $parts) {
+        $p = $part.Trim().TrimStart('.')
+        if ($p) { $exts += $p }
+    }
+}
 if ($exts.Count -eq 0) { $exts = @('md', 'markdown') }
 
 Write-Host "=== packednvim installer ==="
