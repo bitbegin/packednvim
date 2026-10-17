@@ -14,8 +14,8 @@
 #
 # 3. 用 -u 指向发行版自己的 init.lua。
 #
-# 注意：**本发行版不含 Neovim 本体**，需要你自行安装（0.12 或更高），
-# 并让它能在 PATH 上被找到，或用 NVIM_EXE 指定完整路径。
+# 注意：**本发行版自带 Neovim 本体**（runtime/bin/nvim）。
+# 若某个包没带，才需要自行安装 0.12+，放进 PATH 或用 NVIM_EXE 指定。
 
 set -eu
 

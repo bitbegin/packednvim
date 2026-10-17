@@ -119,9 +119,14 @@ end
 
 -- 加载验证：比「文件存在」强得多 —— 它同时证明 ABI 是匹配的，
 -- 而这正是本脚本存在的意义所在。
-local probe = { 'bash', 'python', 'yaml', 'lua', 'c' }
+--
+-- 用 language.inspect 而不是 language.add：0.13 nightly 的 language.add 在
+-- 缺解析器/ABI 失配时**返回 nil 而不抛错**，pcall 恒真、断言空转；
+-- inspect 内部调 add 之后会向 C 侧要语言对象，失败即抛错，0.12 / 0.13 一致。
+-- 探针只选 Neovim 不自带的那几种 —— c/lua 等自带解析器证明不了随包产物就位。
+local probe = { 'bash', 'python', 'yaml', 'cpp', 'toml' }
 for _, lang in ipairs(probe) do
-  local ok, err = pcall(vim.treesitter.language.add, lang)
+  local ok, err = pcall(vim.treesitter.language.inspect, lang)
   if not ok then
     problems[#problems + 1] = ('加载解析器 %s 失败：%s'):format(lang, tostring(err):gsub('\n.*', ''))
   end

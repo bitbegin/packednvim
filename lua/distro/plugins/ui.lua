@@ -10,11 +10,6 @@
 --   devicons     mini.icons 负责图标，devicons 只补它缺的品牌图标
 --   fidget       LSP 进度显示
 
-local function bundled(name)
-  local root = vim.g.distro_root or ''
-  return root .. '/bin/' .. name
-end
-
 return {
   {
     names = 'lualine.nvim',

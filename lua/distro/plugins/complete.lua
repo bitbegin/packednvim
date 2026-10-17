@@ -17,7 +17,8 @@ return {
         appearance = { nerd_font_variant = 'mono' },
 
         completion = {
-          -- 文档不自动弹：中文注释混排时它会盖住代码，需要时按 <C-k> 看
+          -- 文档不自动弹：中文注释混排时它会盖住代码。
+          -- 需要时按 <C-space> 手动看文档（<C-k> 是签名帮助，不是文档开关）。
           documentation = { auto_show = false, auto_show_delay_ms = 300 },
           menu = { border = 'rounded' },
           ghost_text = { enabled = false },   -- 幽灵文本与中文宽度叠加容易错位

@@ -51,11 +51,25 @@ for _ in pairs(d.failed or {}) do dn = dn + 1 end
 check('无模块加载失败', dn == 0, dn .. ' 个')
 
 -- ---- 3. tree-sitter 解析器（随包编译，ABI 应与随包 nvim 一致）----------
-local loaded = 0
-for _, l in ipairs({ 'bash', 'c', 'cpp', 'go', 'json', 'lua', 'markdown', 'python', 'rust', 'toml', 'vim', 'yaml' }) do
-  if pcall(vim.treesitter.language.add, l) then loaded = loaded + 1 end
+-- 清单与 tools/harvest.lua 的 PARSERS 保持一致：那边装什么，这边就验什么。
+-- （曾写过 go/rust —— 两个从未被采集的语言；也曾用 pcall(language.add) 判成功，
+--   但 0.13 nightly 的 language.add 缺解析器时**返回 nil 而不抛错**，pcall 恒真、
+--   断言空转。language.inspect 缺解析器会抛错，且 0.12 / 0.13 行为一致，用它才对。）
+local PARSERS = {
+  'lua', 'luadoc', 'c', 'cpp', 'python', 'bash', 'markdown', 'markdown_inline',
+  'vim', 'vimdoc', 'query', 'json', 'yaml', 'toml', 'diff', 'gitcommit',
+  'regex', 'comment', 'printf', 'cmake', 'make',
+}
+local loaded, missing = 0, {}
+for _, l in ipairs(PARSERS) do
+  if pcall(vim.treesitter.language.inspect, l) then
+    loaded = loaded + 1
+  else
+    missing[#missing + 1] = l
+  end
 end
-check('tree-sitter 解析器可加载', loaded == 12, loaded .. '/12')
+check('tree-sitter 解析器可加载', loaded == #PARSERS,
+  ('%d/%d 缺: %s'):format(loaded, #PARSERS, table.concat(missing, ',')))
 
 -- ---- 4. 随包工具（bin/ 里能找到）---------------------------------------
 local missing_tools = {}

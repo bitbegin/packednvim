@@ -48,7 +48,8 @@ if (-not (Test-Path (Join-Path $dst 'pack/distro'))) {
     throw "$dst 里没有 pack/distro，看起来不是解压出来的包目录"
 }
 
-# 同步清单：配置本体 + 启动脚本。tools/ 与 docs/ 不进包，无需同步。
+# 同步清单：配置本体 + 启动脚本。tools/ 不进包；docs/ 在 package.ps1 的 INCLUDE
+# 里（随包分发），但它是文档、不参与运行逻辑，故不在本脚本同步范围内。
 $items = @('init.lua', 'nvim.cmd', 'nvim.sh', 'lua')
 
 # 逐文件比对。nvim.cmd 特殊处理，见下。

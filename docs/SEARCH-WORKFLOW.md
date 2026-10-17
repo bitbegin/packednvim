@@ -150,7 +150,7 @@ pwsh -File tests/run.ps1     # Windows
 | `<leader>sw` | 搜光标下单词（按字面量匹配） |
 | `<leader>sn` / `<leader>sp` | 下一个 / 上一个结果 |
 | `<leader>sc` | 关闭结果窗口 |
-| `<leader>sr` | 搜索并替换 —— *待办*，等 `grug-far.nvim` 选定后接入 |
+| `<leader>sr` | 搜索并替换（`grug-far.nvim`，已接入） |
 
 ### 环境限制
 

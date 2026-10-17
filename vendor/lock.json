@@ -4,7 +4,7 @@
   "plugins": [
     {
       "repo": "antosha417/nvim-lsp-file-operations",
-      "dir": "pack/distro/opt/nvim-lsp-file-operations",
+      "dir": "pack/distro/start/nvim-lsp-file-operations",
       "pack": "opt",
       "branch": "master",
       "commit": "6f0997687c8dd2e3217a160167078b8bff052c43",
@@ -88,7 +88,7 @@
     },
     {
       "repo": "folke/todo-comments.nvim",
-      "dir": "pack/distro/opt/todo-comments.nvim",
+      "dir": "pack/distro/start/todo-comments.nvim",
       "pack": "opt",
       "branch": "main",
       "commit": "31e3c38ce9b29781e4422fc0322eb0a21f4e8668",
@@ -124,7 +124,7 @@
     },
     {
       "repo": "folke/ts-comments.nvim",
-      "dir": "pack/distro/opt/ts-comments.nvim",
+      "dir": "pack/distro/start/ts-comments.nvim",
       "pack": "opt",
       "branch": "main",
       "commit": "a59d6092213447450191122c9346f309161504cb",
@@ -244,7 +244,7 @@
     },
     {
       "repo": "MeanderingProgrammer/render-markdown.nvim",
-      "dir": "pack/distro/opt/render-markdown.nvim",
+      "dir": "pack/distro/start/render-markdown.nvim",
       "pack": "opt",
       "branch": "main",
       "commit": "8e8795368391036643b622875a6da6a51bcd33f4",
@@ -268,7 +268,7 @@
     },
     {
       "repo": "mrjones2014/smart-splits.nvim",
-      "dir": "pack/distro/opt/smart-splits.nvim",
+      "dir": "pack/distro/start/smart-splits.nvim",
       "pack": "opt",
       "branch": "master",
       "commit": "07dbad410256f755e69ffd31cb8d122bcd6b91f7",

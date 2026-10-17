@@ -23,7 +23,16 @@ local function read_manifest()
 end
 
 local function current_platform()
-  local os = vim.fn.has('win32') == 1 and 'windows' or 'linux'
+  -- 平台名必须与 tools/fetch-tools.ps1 写进 bin/manifest.json 的一致：
+  -- linux-x64 / linux-arm64 / windows-x64 / darwin-x64 / darwin-arm64。
+  -- （曾用 has('win32') 二分，macOS 被误判成 linux-arm64，
+  --   于是 darwin 包的工具检查一条都比不中 —— 空转还报绿。）
+  local os = 'linux'
+  if vim.fn.has('win32') == 1 then
+    os = 'windows'
+  elseif vim.fn.has('macunix') == 1 then
+    os = 'darwin'
+  end
   local arch = jit.arch == 'arm64' and 'arm64' or 'x64'
   return os .. '-' .. arch
 end
@@ -206,12 +215,15 @@ function M.check()
   -- -------------------------------------------------------------------------
   h.start('distro: tree-sitter')
 
-  -- 解析器可能来自两处：随包的 vendor/prebuilt/<平台>/，或本机 stdpath('data')/site
-  local candidates = {
-    (vim.g.distro_root or '') .. '/vendor/prebuilt/'
-      .. (vim.fn.has('win32') == 1 and 'win64' or 'linux64') .. '/neovim-data/site/parser',
-    vim.fn.stdpath('data') .. '/site/parser',
-  }
+  -- 解析器目录以 init.lua 实际挂载的为准（vim.g.distro_treesitter_dir），
+  -- 不在代码里再抄一份路径 —— 那份副本已经在「一包两平台」改「每平台一包」时
+  -- 过期过一次（还在抄旧的 vendor/prebuilt 布局，对现行包误报「没有解析器」）。
+  local candidates = {}
+  if vim.g.distro_treesitter_dir then
+    candidates[#candidates + 1] = vim.g.distro_treesitter_dir .. '/parser'
+  end
+  candidates[#candidates + 1] = (vim.g.distro_root or '') .. '/vendor/treesitter/site/parser'
+  candidates[#candidates + 1] = vim.fn.stdpath('data') .. '/site/parser'
   local found_dir, count = nil, 0
   for _, dir in ipairs(candidates) do
     local files = vim.fn.glob(dir .. '/*', false, true)
@@ -229,7 +241,7 @@ function M.check()
   else
     h.warn('没有找到任何随包或本机的 tree-sitter 解析器')
     h.info('不影响基本编辑：Neovim 自带 C / Lua / Markdown / Vimscript / Vimdoc 的解析器')
-    h.info('离线包应在 vendor/prebuilt/<平台>/neovim-data/site/parser 下带上解析器')
+    h.info('离线包应在 vendor/treesitter/site/parser 下带上解析器（由 tools/harvest.lua 产出）')
   end
 
   -- -------------------------------------------------------------------------
@@ -239,11 +251,8 @@ function M.check()
   h.info('本发行版的联网风险项（打包时必须预置产物，否则首次使用会尝试下载）：')
   h.info('  blink.cmp 的原生库 -> pack/distro/start/blink.cmp/target/release/')
   h.info('  jieba.vim 的 cdylib  -> pack/distro/start/jieba.vim/lua/jieba_vim/')
-  h.info('  tree-sitter 解析器   -> vendor/prebuilt/<平台>/neovim-data/site/parser/')
-  local verify = (vim.g.distro_root or '') .. '/tools/verify-offline.ps1'
-  if vim.fn.filereadable(verify) == 1 then
-    h.info('完整验收：pwsh tools/verify-offline.ps1（在断网环境里跑）')
-  end
+  h.info('  tree-sitter 解析器   -> vendor/treesitter/site/parser/')
+  h.info('完整验收由 CI 的冒烟测试承担（tools/smoke.lua，逐平台对刚打出的包执行）')
 end
 
 return M

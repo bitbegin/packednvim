@@ -22,8 +22,8 @@ rem    the bundled copies without depending on the system.
 rem
 rem 3. Runs Neovim with -u pointing at this distribution's init.lua.
 rem
-rem NOTE: Neovim itself is NOT bundled. Install Neovim 0.12+ and either put
-rem nvim.exe on PATH or set NVIM_EXE to its full path.
+rem NOTE: Neovim IS bundled here at runtime\bin\nvim.exe (see docs/INSTALL.md).
+rem If a package lacks it, put nvim.exe on PATH or set NVIM_EXE to its full path.
 
 setlocal
 

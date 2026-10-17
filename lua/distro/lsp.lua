@@ -78,7 +78,10 @@ local function lsp_keymaps(ev)
   map('gi', vim.lsp.buf.implementation, '跳转到实现')
   map('gt', vim.lsp.buf.type_definition, '跳转到类型定义')
   map('K', vim.lsp.buf.hover, '悬停文档')
-  map('<C-k>', vim.lsp.buf.signature_help, '参数签名')
+  -- 签名帮助用 <leader>k 而**不是** <C-k>：<C-k> 已由 smart-splits 全局绑为
+  -- 「移到上边窗口」。缓冲区局部映射会压过全局映射，若这里用 <C-k>，
+  -- LSP 缓冲里就再也上移不了窗口。签名帮助不如窗口移动高频，让给后者。
+  map('<leader>k', vim.lsp.buf.signature_help, '参数签名')
   map('<leader>rn', vim.lsp.buf.rename, '重命名符号')
   map('<leader>ca', vim.lsp.buf.code_action, '代码动作')
   map('<leader>ct', function()
@@ -156,7 +159,7 @@ function M.setup()
     callback = lsp_keymaps,
   })
 
-  -- 诊断的呈现方式：不写行内虚拟文本（靠 mini.notify / trouble 集中看），
+  -- 诊断的呈现方式：不写行内虚拟文本（靠 trouble / 原生 :messages 集中看），
   -- 只保留符号列与行内高亮，视觉噪音小，也更适合中文注释混排。
   vim.diagnostic.config({
     virtual_text = false,

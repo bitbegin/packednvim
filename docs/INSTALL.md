@@ -315,7 +315,7 @@ Vim 文档明确说明这是两个独立选项。而分工不同：
 #### 怎么确认有没有失效
 
 ```bash
-nvim --headless -u init.lua -c "lua for _,l in ipairs({'bash','python','yaml','toml'}) do local ok,err=pcall(vim.treesitter.language.add,l) print(l, ok, err or '') end" -c "qa!"
+nvim --headless -u init.lua -c "lua for _,l in ipairs({'bash','python','yaml','toml'}) do local ok,err=pcall(vim.treesitter.language.inspect,l) print(l, ok, err or '') end" -c "qa!"
 ```
 
 全部 `true` 就没问题；出现 `Incompatible language version` 就是 ABI 失配。

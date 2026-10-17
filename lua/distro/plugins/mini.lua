@@ -94,12 +94,15 @@ return {
                 '  所有插件与工具都已随包分发，运行时不联网',
                 '',
               }, '\n'),
+              -- 注意：这里显示的键位提示必须与真实映射一致 —— 曾经写错过三个
+              -- （sf/sn/ss），而真实映射是 ff/fr + 当时 ss 根本没注册。
               items = {
                 { name = '打开文件', action = 'enew', section = '操作' },
-                { name = '查找文件          <leader>sf', action = 'lua require("fzf-lua").files()', section = '操作' },
+                { name = '查找文件          <leader>ff', action = 'lua require("fzf-lua").files()', section = '操作' },
                 { name = '全项目搜索        <leader>sg', action = 'lua require("fzf-lua").grep_project()', section = '操作' },
-                { name = '最近文件          <leader>sn', action = 'lua require("distro.plugins.misc").recent_files()', section = '操作' },
-                { name = '恢复会话          <leader>ss', action = 'lua MiniSessions.select()', section = '操作' },
+                { name = '最近文件          <leader>fr', action = 'lua require("distro.plugins.misc").recent_files()', section = '操作' },
+                { name = '恢复会话', action = 'lua MiniSessions.select()', section = '操作' },
+                { name = '恢复上次搜索    <leader>ss', action = 'lua require("fzf-lua").resume()', section = '操作' },
                 { name = '健康检查          :checkhealth distro', action = 'checkhealth distro', section = '帮助' },
                 { name = '退出              q', action = 'qa', section = '帮助' },
               },
@@ -139,6 +142,11 @@ return {
             local dir = vim.fn.stdpath('state') .. '/sessions'
             vim.fn.mkdir(dir, 'p')
             cfg = { directory = dir }
+            -- 启动页「恢复会话 <leader>ss」引用的就是这个映射 —— 它曾经只出现在
+            -- 启动页的文字里，实际没注册，按了没反应。
+            vim.keymap.set('n', '<leader>ss', function()
+              require('mini.sessions').select()
+            end, { desc = '恢复会话（mini.sessions）' })
           elseif name == 'map' then
             cfg = { window = { config = { relative = 'editor', border = 'rounded' } } }
           end

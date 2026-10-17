@@ -57,7 +57,7 @@ pcall(vim.loader.enable)
 opt.ambiwidth = 'single'
 
 -- 用 jieba.vim 做中文按词移动（w/b/e）。它提供的动作会覆盖默认行为，
--- 见 plugins/jieba.lua。这里只保证不因 fileformat 之类误判而失效。
+-- 中文按词移动（w/b/e）。jieba 由 plugins/zh.lua 负责真正的接线与产物检查。
 opt.fileformats = { 'unix', 'dos', 'mac' }
 
 -- ---------------------------------------------------------------------------

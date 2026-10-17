@@ -31,6 +31,12 @@ end
 
 --- 把键位变成「第一次按下时才加载」。
 -- 这是整套懒加载的核心：插件在真正用到之前，连 runtimepath 都不进。
+--
+-- 加载完成后要**回放本次按键**：只加载不回放的话，第一次按下只是装载，
+-- 用户要按第二次才真正触发动作（实测确认的行为）。回放用 feedkeys 异步排队，
+-- 此时 setup 已把同名键位换成真正的实现，回放命中的就是它。
+-- 安全闸：若 setup 失败（映射没被替换），回放会重新命中本闭包造成无限递归，
+-- 所以回放前先确认当前映射已经不是这个懒加载闭包。
 -- @param keys string|string[] 触发键位
 -- @param names string|string[] 需要 packadd 的插件（顺序即加载顺序）
 -- @param setup fun|nil 加载后执行的配置
@@ -50,8 +56,27 @@ function M.lazy(keys, names, setup, desc)
     end
   end
 
+  -- 回放前必须把 <leader> 展开成真正的前导键：feedkeys 的类型缓冲里
+  -- 不识别 <leader> 这个记号（它在映射定义时才展开），直接喂 "<leader>e"
+  -- 等于喂一串普通字符，命中不了任何映射。
+  local leader = vim.g.mapleader or '\\'
+  local localleader = vim.g.maplocalleader or leader
+  local function expand(key)
+    return vim.api.nvim_replace_termcodes(
+      (key:gsub('<[lL]ocal[lL]eader>', localleader):gsub('<[lL]eader>', leader)),
+      true, true, true)
+  end
+
   for _, key in ipairs(type(keys) == 'table' and keys or { keys }) do
-    vim.keymap.set('n', key, run, { desc = desc or ('加载 ' .. table.concat(list, ', ')) })
+    local lazy_fn
+    lazy_fn = function()
+      run()
+      local cur = vim.fn.maparg(key, 'n', false, true)
+      if type(cur) == 'table' and cur.callback and cur.callback ~= lazy_fn then
+        vim.api.nvim_feedkeys(expand(key), 'm', false)
+      end
+    end
+    vim.keymap.set('n', key, lazy_fn, { desc = desc or ('加载 ' .. table.concat(list, ', ')) })
   end
 end
 
