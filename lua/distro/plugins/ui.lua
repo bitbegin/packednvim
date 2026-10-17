@@ -63,8 +63,16 @@ return {
         -- 图标故意用 ASCII：在 ambiwidth=double 时代防错位。现在 single 已
         -- 解除约束，保持 ASCII 是实测过的稳定选择。
         icons = { breadcrumb = '>', separator = '->', group = '+' },
-        -- 每个键位都设了 desc（见 keymaps.lua 与各插件配置），所以这里不需要额外 spec
-        spec = {},
+        -- 绝大多数键位都自带 desc（见 keymaps.lua 与各插件配置），这里只补
+        -- which-key 推断不出来的「分组」关系。
+        spec = {
+          -- mini.comment 的 gc 既是操作符（按 gc 后还要再接动作），又是 gcc 的
+          -- 父级。which-key 把「自身也是映射」的节点当叶子显示，于是按 g 只看
+          -- 到一条「gc Comment」，gcc 永远不出现 —— 用户视角就是「gcc 不在
+          -- which-key 里」。显式声明成组后：按 g 显示「gc +注释」，按 gc 才
+          -- 展开到 gcc。
+          { 'gc', group = '注释', mode = { 'n', 'x' } },
+        },
         win = { border = 'rounded', padding = { 1, 2 } },
       })
     end,

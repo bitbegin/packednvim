@@ -342,6 +342,28 @@ GUI 外观在 Neovide 自己的配置里（`%APPDATA%\neovide\config.toml`）：
 
 缺了不影响启动，`:checkhealth distro` 会列出缺哪些以及各自影响什么。
 
+## 图标显示成方块 / 问号
+
+**这是终端字体的问题，不是配置的问题。** 图标画的是 Nerd Font 的私有区（PUA）
+码位，终端字体里没有那些字形就只能画方块。
+
+判断方法很简单：**换一个终端看看**。同一个配置在 Windows Terminal 里正常、
+在 Alacritty 里是方块 —— 那就说明 Alacritty 用的字体不是 Nerd Font。
+
+各终端的改法：
+
+| 终端 | 怎么改 |
+| --- | --- |
+| Alacritty | `%APPDATA%\alacritty\alacritty.toml` 里设 `[font.normal] family = "FiraCode Nerd Font Mono"`（默认值 `monospace` 会落到 Cascadia / Consolas，没有图标字形） |
+| Windows Terminal | 设置 → 外观 → 字体，选名字带 `Nerd Font` / `NF` 的 |
+| WezTerm | `font = { family = "FiraCode Nerd Font Mono" }` |
+
+> 注意 `vim.g.have_nerd_font = true`（`options.lua` 里已设）只决定「**画不画**图标」，
+> 画出来能不能显示取决于**终端字体**。两者是两件事。
+
+Neovide 不需要额外配置：它自己会加载 Nerd Font（字体由 `options.lua` 的
+`guifont` 指定，见下）。
+
 ---
 
 ## 键位的前提条件

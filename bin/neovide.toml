@@ -6,11 +6,13 @@
 # 只把它放进 bin/ 是不够的：bin/ 在 PATH 上只影响「能否找到 neovide.exe」，
 # 对配置位置没有任何作用。
 #
-# 为什么放 bin/ 而不是包根：bin/ 是随包工具目录，install.ps1 里已经以
-# $Pkg\bin 为基准拼路径，放在这里不用再引入一个新的根级文件。
+# 注意个前提：安装脚本写的环境变量，**已经打开的 Explorer / 终端不会继承**。
+# 从旧会话启动 Neovide 时本文件读不到，于是窗口不会最大化，字体也退回默认
+# （Cascadia Mono / Consolas 没有 Nerd Font 字形，图标全成方块）。
+# 所以**字体不放在这里**，改用 nvim 侧的 guifont / guifontwide —— 那条路不依赖
+# 任何环境变量。见 lua/distro/options.lua 的「GUI（Neovide）外观」一节。
 #
-# 这里只放 GUI 外观。编辑器行为（键位、插件、LSP）一律在 lua/ 里，
-# 否则同一套设置的真相会被劈成两半，排查时非常难受。
+# 本文件只负责「没法用 vim 选项表达」的两项：窗口初始尺寸、框线风格。
 
 # ---------------------------------------------------------------------------
 # 初始窗口尺寸（顶层键，必须写在任何 [表] 之前）
@@ -27,60 +29,11 @@
 # 而写 2100x1350 在 100% 缩放的 1920x1080 屏上又会超出屏幕。同一个数字
 # 不可能兼顾，所以交给最大化。
 #
-# 踩坑记录：把 size 写在 [font] 之后会变成 font.size，与字号撞名，
-# TOML 报 duplicate key，**整份配置作废退回默认** —— 表现为「改了完全没生效」。
+# 踩坑记录：把顶层键写在下面任何 [表] 之后都会被归进那张表（例如 size 会变成
+# font.size），TOML 报 duplicate key，**整份配置作废退回默认** ——
+# 表现为「改了完全没生效」，而且只有命令行启动才看得到报错。
 # ---------------------------------------------------------------------------
 maximized = true
-
-[font]
-size = 13.0
-
-# ---------------------------------------------------------------------------
-# 字体：顺序即优先级，Neovide 取第一个能加载的作为主字体，
-# 后面的用于补前面缺的字形（CJK、图标）。
-#
-# 两个坑都会导致「字与字之间有空隙」：
-#
-# 1) 列了本机不存在的字体。Neovide 只打一行 WARN
-#    「Some configured fonts could not be loaded and will be skipped」，
-#    然后静默退回内置字体 —— 表面看不出，字距却已经乱了。
-#    查证方法：neovide --log，看那行 WARN 列了哪些族名。
-#
-# 2) 中文回退用了**比例字体**（微软雅黑、Noto Sans SC 都是）。
-#    等宽网格里塞比例字形，宽度对不上，视觉上就是字之间多出空隙。
-#    所以中文优先放真正等宽的「新宋体」（NSimSun，CJK 宽度是 ASCII 的两倍）。
-#
-# 只能全部用 [[font.normal]] 数组表写：不能同时出现 normal = ["..."]，
-# 那是 TOML 的 duplicate key，整份配置会作废。
-# 加到这里的每个族名，务必先用 --log 确认能加载。
-# ---------------------------------------------------------------------------
-
-# 主字体：等宽 + Nerd Font 图标（本发行版图标强依赖 Nerd Font）
-[[font.normal]]
-family = "FiraCode Nerd Font Mono"
-
-[[font.normal]]
-family = "JetBrainsMono NFM"
-
-[[font.normal]]
-family = "JetBrainsMono Nerd Font"
-
-# 没有 Nerd Font 时的等宽兜底（Windows 11 / Windows 自带）
-[[font.normal]]
-family = "Cascadia Mono"
-
-[[font.normal]]
-family = "Consolas"
-
-# 中文回退：先等宽的，再退到比例字体
-[[font.normal]]
-family = "Sarasa Mono SC"
-
-[[font.normal]]
-family = "新宋体"
-
-[[font.normal]]
-family = "Microsoft YaHei UI"
 
 [box-drawing]
 # 用字体自带字形画框线。Nerd Font / Sarasa 都自带，视觉上与终端一致；

@@ -177,26 +177,59 @@ opt.path:append('**')          -- gf / :find 能递归查找
 opt.wildignore:append({ '*/node_modules/*', '*/.git/*', '*/target/*' })
 
 -- ---------------------------------------------------------------------------
--- GUI（Neovide）外观 —— 不在这里设
+-- GUI（Neovide）外观
 -- ---------------------------------------------------------------------------
--- 这里**刻意没有** `if vim.g.neovide then ... end` 这种分支，因为那个判断在本
--- 文件执行时永远为假：Neovide 并不会在启动 nvim 时注入该变量（日志里的启动
--- 命令只有 `--embed -p`），它是连接成功之后才经 RPC 设的，而 options.lua 在
+-- 这里**没有** `if vim.g.neovide then ... end` 这种分支，因为那个判断在本文件
+-- 执行时永远为假：Neovide 并不会在启动 nvim 时注入该变量（日志里的启动命令
+-- 只有 `--embed -p`），它是连接成功之后才经 RPC 设的，而 options.lua 在
 -- init.lua 装配置的阶段就跑完了。
 --
 -- 曾经写过一段 `if vim.g.neovide then vim.g.neovide_scale_factor = ... end`，
 -- 当时靠启动器额外传 `--cmd "let g:neovide=v:true"` 才生效；启动器被移除后，
 -- 那一段就变成了**静默的死代码**（改了没反应，且不报错，很难察觉）。
 --
--- 现在 GUI 外观统一由随包的 bin/neovide.toml 负责：
---   - 初始窗口尺寸（maximized，避开 size 的物理像素/DPI 陷阱）
---   - 字体与中文回退链（等宽优先，否则中文会出现字间空隙）
--- 由 install.ps1 写 NEOVIDE_CONFIG 指过去 —— 只放进 bin/ 是无效的，
--- Neovide 只认 %APPDATA%\neovide\config.toml 或 NEOVIDE_CONFIG。
+-- 所以下面两项**无条件**设置。guifont / guifontwide 只在 GUI 里起作用，
+-- 终端里设置不报错（实测 v:errmsg 为空），因此不需要任何条件判断。
 --
--- 字体也可以用 guifont / guifontwide 在此设置（终端里设置实测不报错，
--- v:errmsg 为空），但那会与 toml 的 [font] 形成两处真相，所以不这么做。
+-- 为什么字体不放在 bin/neovide.toml 里：那个文件只有 **NEOVIDE_CONFIG**
+-- 环境变量能找到，而安装脚本写进注册表的变量，**已经打开的 Explorer / 终端
+-- 不会继承**。实测后果：从旧会话启动 Neovide 时读不到 toml，退回
+-- Cascadia Mono / Consolas —— 这两个字体没有 Nerd Font 字形，**图标全变方块**。
+-- guifont 由 nvim 自己的配置设置，不依赖任何环境变量，没有这个坑。
 --
--- 若将来确实需要「只在 GUI 里生效」的运行时设置，正确时机是 UIEnter 事件，
--- 那时 Neovide 已经把 g:neovide 设好了：
---   vim.api.nvim_create_autocmd('UIEnter', { callback = function() ... end })
+-- neovide.toml 仍负责「窗口初始尺寸」(maximized) 与框线风格，那两项没法用
+-- vim 选项表达。
+--
+-- 字体链：等宽的 Nerd Font 优先（图标依赖它），中文回退也必须等宽，
+-- 否则中文在等宽网格里宽度对不上，字与字之间会露出空隙。
+--
+-- 注意 guifont **只能写一个字体**：逗号分隔的回退链是 Vim GUI 的老写法，
+-- Neovide 的解析器不认，会直接报错
+--   Error: Failed to parse guifont: Invalid size
+-- 然后在每次启动时卡在「按回车继续」。实测踩过一次。
+-- 每个字体各带 :h<字号>，Neovide 会把 guifontwide 当作宽字符的回退。
+local GUI_FONT = 'FiraCode Nerd Font Mono:h13'
+-- guifontwide 专管「guifont 里没有的宽字符」，中文就落在这里。
+local GUI_FONT_WIDE = '新宋体:h13'
+vim.o.guifont = GUI_FONT
+vim.o.guifontwide = GUI_FONT_WIDE
+
+-- 但只设一次**不够**：Neovide 在 UI 附加之后会把它自己的字体值写进 guifont
+-- （没配 toml 时是内置默认 `Cascadia Code,Cascadia Mono,...`），把 init 阶段
+-- 设的值**覆盖掉**。实测日志里能看到：
+--   OptionSet { gui_option: GuiFont("Cascadia Code,Cascadia Mono,Consolas,...") }
+-- 而这个默认列表里没有 Nerd Font 字形 —— 图标就全变方块了。
+--
+-- 所以要在 UI 真正附加（UIEnter）之后再重申一次，这时 Neovide 的写入已经完成，
+-- 我们的值才能落地并经 OptionSet 被它采用。
+vim.api.nvim_create_autocmd('UIEnter', {
+  callback = function()
+    if vim.o.guifont ~= GUI_FONT then
+      vim.o.guifont = GUI_FONT
+    end
+    if vim.o.guifontwide ~= GUI_FONT_WIDE then
+      vim.o.guifontwide = GUI_FONT_WIDE
+    end
+  end,
+  desc = 'GUI 附加后重申字体（Neovide 会先覆盖一次）',
+})
